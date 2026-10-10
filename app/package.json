@@ -1,0 +1,36 @@
+{
+  "name": "edit-tracker",
+  "version": "1.0.0",
+  "description": "编辑工作追踪系统",
+  "main": "main.js",
+  "author": "buke",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^33.4.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.buke.edittracker",
+    "productName": "EditTracker",
+    "files": [
+      "main.js",
+      "index.html"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ]
+    },
+    "portable": {
+      "artifactName": "EditTracker-Portable.exe"
+    },
+    "directories": {
+      "output": "dist"
+    }
+  }
+}
