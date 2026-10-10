@@ -1,0 +1,9 @@
+# 依赖与构建产物
+node_modules/
+app/node_modules/
+app/dist/
+*.exe
+
+# 工作区数据
+.workbuddy/
+app/package-lock.json
