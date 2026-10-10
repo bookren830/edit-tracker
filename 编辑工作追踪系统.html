@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>编辑工作追踪系统</title>
+<style>
+:root{
+  --bg: rgb(230,230,250);
+  --panel: rgb(204,204,255);
+  --line: rgb(120,81,169);
+  --ink: #1a1a1a;
+  --white:#ffffff;
+  --red:#c0392b;
+  --green:#1e8449;
+  --muted:#5b5470;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:"SimHei","黑体",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg);color:var(--ink);min-height:100vh;
+}
+button{font-family:inherit;cursor:pointer;}
+input,select,textarea{font-family:inherit;font-size:16px;}
+
+/* ---------- 布局 ---------- */
+.layout{display:flex;min-height:100vh;}
+.sidebar{
+  width:230px;flex-shrink:0;background:var(--white);
+  border-right:2px solid var(--line);padding:20px 12px;
+  position:sticky;top:0;height:100vh;overflow:auto;
+}
+.brand{font-size:17px;font-weight:bold;padding:12px 14px;margin-bottom:14px;background:var(--line);color:#fff;border-radius:12px;text-align:center;letter-spacing:1px;}
+.nav-item{
+  display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+  padding:10px 12px;margin-bottom:6px;border:1px solid transparent;border-radius:8px;
+  background:transparent;font-size:15px;color:var(--ink);
+}
+.nav-item:hover{background:var(--bg);}
+.nav-item.active{background:var(--panel);border-color:var(--line);font-weight:bold;}
+.nav-item svg{width:18px;height:18px;flex-shrink:0;}
+.main{flex:1;padding:24px;max-width:1200px;margin:0 auto;width:100%;padding-bottom:90px;}
+.page{display:none;}
+.page.active{display:block;}
+#page-dashboard.active{display:flex;flex-direction:column;min-height:calc(100vh - 48px);}
+#page-dashboard .page-title{margin-bottom:0;}
+#page-kanban .page-title{font-size:30px;margin-bottom:20px;}
+#page-profile .page-title{font-size:30px;margin-bottom:20px;}
+#page-warnings .page-title{font-size:30px;margin-bottom:4px;}
+#page-warnings .page-desc{margin-bottom:20px;}
+#dashBody{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:20px;padding:20px 0 0;}
+#dashBody .card{margin-bottom:0;}
+.page-title{font-size:22px;font-weight:bold;margin-bottom:4px;position:relative;padding-bottom:10px;}
+.page-title::after{content:'';position:absolute;left:0;bottom:0;width:48px;height:4px;border-radius:2px;background:var(--line);}
+.page-desc{color:var(--muted);font-size:13px;margin-bottom:18px;}
+
+/* ---------- 卡片与通用 ---------- */
+.card{
+  background:var(--white);border:1px solid #e7e4f0;border-radius:14px;
+  padding:18px;margin-bottom:16px;box-shadow:0 2px 10px rgba(30,20,60,.05);
+}
+.card.tinted{background:var(--panel);}
+.card h3{font-size:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  min-height:44px;padding:8px 16px;border-radius:8px;font-size:14px;
+  border:1.5px solid var(--line);background:var(--white);color:var(--ink);
+}
+.btn.primary{background:var(--line);color:#fff;}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--line);}
+.btn.small{min-height:36px;padding:4px 10px;font-size:13px;}
+.btn.danger{color:var(--red);border-color:var(--red);}
+.btn svg{width:15px;height:15px;}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.muted{color:var(--muted);font-size:13px;}
+.tag{
+  display:inline-block;padding:2px 8px;border-radius:6px;font-size:12px;
+  background:#f4f2fa;border:1px solid #e7e4f0;margin-right:4px;
+}
+.tag.red{background:#f9e2df;border-color:var(--red);color:var(--red);}
+.tag.green{background:#e2f3e8;border-color:var(--green);color:var(--green);}
+
+/* ---------- 今天要处理 ---------- */
+.today-item{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:10px 12px;border:1px solid var(--line);border-radius:8px;
+  background:var(--white);margin-bottom:8px;flex-wrap:wrap;
+}
+.today-item.overdue{border-color:var(--red);background:#fdf1ef;}
+.today-item .info{flex:1;min-width:180px;}
+.badge-overdue{color:var(--red);font-weight:bold;font-size:13px;}
+
+/* ---------- 指标网格 ---------- */
+.metric-grid{display:grid;gap:12px;}
+.metric-grid-top{grid-template-columns:repeat(3,1fr);}
+.metric-grid-bottom{grid-template-columns:repeat(4,1fr);margin-top:12px;}
+.metric{
+  background:transparent;border:none;border-radius:0;
+  padding:10px 6px;text-align:center;box-shadow:none;
+}
+.metric .num{font-size:34px;font-weight:bold;margin:4px 0 2px;font-variant-numeric:tabular-nums;letter-spacing:.5px;}
+.metric .lbl{font-size:13px;color:var(--muted);}
+.metric .num.warn{color:var(--red);}
+.metric input{
+  width:96px;text-align:center;font-size:34px;font-weight:bold;line-height:1.2;
+  border:none;border-bottom:2px dashed rgba(120,81,169,.5);border-radius:0;background:transparent;
+  padding:0;margin:4px 0 2px;display:inline-block;font-variant-numeric:tabular-nums;
+}
+.metric input:focus{outline:none;border-bottom-color:var(--line);}
+
+/* ---------- 环形完成率 ---------- */
+.ring-wrap{position:relative;width:76px;height:76px;margin:0 auto;}
+.ring-wrap .ring-txt{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:17px;font-weight:bold;font-variant-numeric:tabular-nums;
+}
+
+/* ---------- 胶囊分段切换 ---------- */
+.seg{display:inline-flex;background:var(--white);border:1px solid #e7e4f0;border-radius:999px;padding:3px;gap:2px;}
+.seg button{
+  border:none;background:transparent;border-radius:999px;padding:6px 16px;
+  font-size:13px;min-height:36px;color:var(--muted);
+}
+.seg button.active{background:var(--line);color:#fff;font-weight:bold;}
+
+/* ---------- 节点步进式流程统计 ---------- */
+.stepflow{position:relative;padding:8px 0 2px;}
+.stepflow::before{
+  content:'';position:absolute;left:13%;right:13%;top:36px;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,rgba(120,81,169,.08),rgba(120,81,169,.35),rgba(120,81,169,.08));
+}
+.step-grid{display:flex;position:relative;}
+.step-node{flex:1;text-align:center;cursor:pointer;}
+.step-circle{
+  width:56px;height:56px;border-radius:50%;background:#fff;
+  border:2px solid rgba(120,81,169,.4);
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:22px;font-weight:bold;font-variant-numeric:tabular-nums;color:var(--ink);
+  transition:transform .15s, box-shadow .15s;position:relative;z-index:1;
+}
+.step-node:hover .step-circle{transform:translateY(-3px);box-shadow:0 6px 14px rgba(120,81,169,.18);}
+.step-node.hot .step-circle{
+  background:var(--line);color:#fff;border-color:var(--line);
+  box-shadow:0 4px 14px rgba(120,81,169,.35);
+}
+.step-lbl{margin-top:8px;font-size:13px;color:var(--muted);}
+.step-node.hot .step-lbl{color:var(--ink);font-weight:bold;}
+.period-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
+.period-bar select{padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--white);}
+
+/* ---------- 流程统计条 ---------- */
+.flow-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.flow-cell{
+  background:var(--white);border:1.5px solid var(--line);border-radius:10px;
+  padding:12px;text-align:center;cursor:pointer;
+}
+.flow-cell:hover{background:var(--bg);}
+.flow-cell .num{font-size:22px;font-weight:bold;}
+.flow-cell .lbl{font-size:13px;color:var(--muted);}
+
+/* ---------- 看板 ---------- */
+.kanban-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+.kanban-tab{
+  padding:8px 14px;border-radius:999px;border:1px solid #e7e4f0;
+  background:var(--white);font-size:14px;min-height:44px;
+}
+.kanban-tab.active{background:var(--line);color:#fff;font-weight:bold;}
+.topic-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.topic-card{
+  background:var(--white);border:1px solid #e7e4f0;border-radius:14px;
+  padding:14px 16px;display:flex;flex-direction:column;gap:6px;
+  box-shadow:0 2px 8px rgba(30,20,60,.04);
+  height:310px;position:relative;
+}
+.t-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.t-head .t-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;}
+.dots-btn{
+  border:none;background:transparent;width:32px;height:32px;min-height:32px;padding:0;
+  border-radius:8px;display:flex;align-items:center;justify-content:center;
+  color:var(--muted);flex-shrink:0;
+}
+.dots-btn:hover{background:#f4f2fa;color:var(--ink);}
+.card-menu{
+  position:absolute;top:44px;right:12px;z-index:30;min-width:136px;
+  background:#fff;border:1px solid #e7e4f0;border-radius:10px;
+  box-shadow:0 8px 24px rgba(30,20,60,.14);display:none;flex-direction:column;overflow:hidden;
+}
+.card-menu.show{display:flex;}
+.card-menu button{
+  border:none;background:#fff;text-align:left;padding:10px 14px;font-size:13px;min-height:40px;
+}
+.card-menu button:hover{background:#f7f6fb;}
+.card-menu button.danger{color:var(--red);}
+
+/* 节点时间轴 */
+.tl-wrap{margin-top:auto;}
+.tl{display:flex;align-items:center;}
+.tl-dot{width:8px;height:8px;border-radius:50%;background:#e7e4f0;flex-shrink:0;}
+.tl-dot.done{background:var(--line);}
+.tl-dot.current{width:12px;height:12px;background:var(--line);box-shadow:0 0 0 3px rgba(120,81,169,.18);}
+.tl-line{flex:1;height:2px;background:#e7e4f0;}
+.tl-line.done{background:var(--line);}
+.tl-cur{font-size:12px;color:var(--muted);margin-top:6px;}
+.tl-cur b{color:var(--line);}
+/* 最新提醒：固定两行，超出省略，不足留空 */
+.r-two{
+  font-size:13px;color:var(--muted);line-height:1.7;min-height:3.4em;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.topic-card .t-title{font-size:16px;font-weight:bold;}
+.topic-card .t-meta{font-size:13px;color:var(--muted);line-height:1.7;}
+.node-track{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;}
+.node-dot{
+  font-size:11px;padding:2px 6px;border-radius:5px;
+  border:1px solid #e7e4f0;background:var(--white);color:var(--muted);
+}
+.node-dot.done{background:var(--line);color:#fff;}
+.node-dot.current{background:var(--panel);color:var(--ink);font-weight:bold;border-width:2px;}
+.topic-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;justify-content:flex-end;}
+.btn.text{border:none;background:transparent;color:var(--line);padding:4px 8px;min-height:36px;}
+.btn.text:hover{background:#f4f2fa;}
+.progress-line{font-size:12px;color:var(--muted);}
+.progress-line b{color:var(--ink);}
+
+/* ---------- 弹窗 ---------- */
+.modal-mask{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);
+  z-index:100;align-items:center;justify-content:center;padding:16px;
+}
+.modal-mask.show{display:flex;}
+.modal{
+  background:var(--white);border:1px solid #e7e4f0;border-radius:16px;
+  width:100%;max-width:640px;max-height:88vh;overflow:auto;padding:20px;
+  box-shadow:0 12px 40px rgba(30,20,60,.18);
+}
+.modal h3{margin-bottom:14px;font-size:17px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-grid .full{grid-column:1/-1;}
+.f-field label{display:block;font-size:13px;margin-bottom:4px;color:var(--muted);}
+.f-field label .req{color:var(--red);}
+.f-field input,.f-field select,.f-field textarea{
+  width:100%;padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--white);
+}
+.f-field textarea{resize:vertical;min-height:64px;}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;}
+.sub-list{border:1px dashed var(--line);border-radius:8px;padding:10px;margin-top:6px;}
+.sub-list .sub-item{display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;}
+.sub-list .sub-item input{flex:1;min-width:70px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;}
+.reminder-item{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:6px;background:var(--bg);font-size:13px;}
+.reminder-item .r-head{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-bottom:3px;}
+
+/* ---------- 个人档案 ---------- */
+.profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
+.profile-cell{background:#f7f6fb;border:1px solid #e7e4f0;border-radius:12px;padding:14px;}
+.profile-cell .p-lbl{font-size:13px;color:var(--muted);margin-bottom:4px;}
+.profile-cell .p-val{font-size:18px;font-weight:bold;}
+
+/* ---------- 数据备份 ---------- */
+.backup-bar{display:flex;gap:10px;flex-wrap:wrap;}
+
+/* ---------- 提示条 ---------- */
+.toast{
+  position:fixed;left:50%;bottom:30px;transform:translateX(-50%);
+  background:var(--ink);color:#fff;padding:10px 20px;border-radius:8px;
+  font-size:14px;z-index:200;display:none;
+}
+.toast.show{display:block;}
+.empty-tip{
+  text-align:center;color:var(--muted);padding:30px 10px;
+  border:1.5px dashed var(--line);border-radius:10px;background:var(--white);
+}
+
+/* ---------- 移动端 ---------- */
+@media (max-width:768px){
+  .layout{flex-direction:column;}
+  .sidebar{
+    position:fixed;bottom:0;left:0;right:0;top:auto;height:auto;width:100%;
+    display:flex;justify-content:space-around;padding:6px 4px;
+    border-right:none;border-top:2px solid var(--line);z-index:90;
+    padding-bottom:calc(6px + env(safe-area-inset-bottom));
+  }
+  .brand{display:none;}
+  .nav-item{flex-direction:column;gap:2px;font-size:12px;padding:8px 6px;margin:0;min-height:50px;flex:1;justify-content:center;text-align:center;}
+  .main{padding:14px;padding-bottom:90px;}
+  .form-grid{grid-template-columns:1fr;}
+  .metric-grid-top,.metric-grid-bottom{grid-template-columns:repeat(2,1fr);}
+  .topic-grid{grid-template-columns:1fr;}
+  .topic-card{height:auto;min-height:310px;}
+  .stepflow::before{display:none;}
+  .step-grid{flex-wrap:wrap;}
+  .step-node{flex:1 1 40%;margin-bottom:14px;}
+  .seg button{padding:6px 10px;font-size:12px;}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="brand">编辑工作追踪系统</div>
+    <button class="nav-item active" data-page="dashboard" onclick="switchPage('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+      工作成果看板
+    </button>
+    <button class="nav-item" data-page="kanban" onclick="switchPage('kanban')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h6v16H4zM14 4h6v10h-6z"/></svg>
+      选题执行看板
+    </button>
+    <button class="nav-item" data-page="warnings" onclick="switchPage('warnings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3L2 20h20L12 3zM12 10v4M12 17.5v.5"/></svg>
+      进度预警
+    </button>
+    <button class="nav-item" data-page="profile" onclick="switchPage('profile')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6 8-6s8 2 8 6"/></svg>
+      个人档案
+    </button>
+  </nav>
+
+  <main class="main">
+    <!-- 页面一：工作成果看板 -->
+    <section id="page-dashboard" class="page active">
+      <div class="page-title" style="font-size:30px;">工作成果看板</div>
+
+      <div id="dashBody">
+      <div class="card">
+        <h3>核心指标</h3>
+        <div class="period-bar">
+          <div class="seg" id="quarterSeg"></div>
+          <span style="flex:1"></span>
+          <span class="muted" id="periodHint"></span>
+          <select id="periodYear" onchange="onPeriodChange()"></select>
+        </div>
+        <div class="metric-grid metric-grid-top" id="metricGridTop"></div>
+        <div class="metric-grid metric-grid-bottom" id="metricGridBottom"></div>
+      </div>
+
+      <div class="card">
+        <h3>流程统计</h3>
+        <div class="stepflow" id="flowStats"></div>
+      </div>
+      </div>
+    </section>
+
+    <!-- 页面二：选题执行看板 -->
+    <section id="page-kanban" class="page">
+      <div class="page-title">选题执行看板</div>
+      <div class="row" style="justify-content:space-between;margin-bottom:14px;">
+        <div class="kanban-tabs" id="kanbanTabs" style="margin-bottom:0;"></div>
+        <button class="btn primary" onclick="openTopicModal(null)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          新建选题
+        </button>
+      </div>
+      <div class="topic-grid" id="topicGrid"></div>
+    </section>
+
+    <!-- 页面三：进度预警 -->
+    <section id="page-warnings" class="page">
+      <div class="page-title">进度预警</div>
+      <div class="page-desc">全流程总时长超过 240 天，或单节点停留超过 60 天的未出版选题</div>
+      <div id="warnList"></div>
+    </section>
+
+    <!-- 页面四：个人档案 -->
+    <section id="page-profile" class="page">
+      <div class="page-title">个人档案</div>
+      <div class="page-desc">基本信息用于看板展示，仅保存在本机</div>
+      <div class="card">
+        <div class="profile-grid" id="profileGrid"></div>
+        <div style="margin-top:14px;">
+          <button class="btn primary" onclick="openProfileModal()">编辑档案</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>数据备份</h3>
+        <div class="backup-bar">
+          <button class="btn small" onclick="exportJSON()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
+            导出 JSON 备份
+          </button>
+          <button class="btn small" onclick="document.getElementById('importFile').click()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21V9m0 0l-4 4m4-4l4 4M4 3h16"/></svg>
+            导入恢复
+          </button>
+          <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
+          <button class="btn small danger" onclick="clearAllData()">清空全部数据</button>
+        </div>
+        <div class="muted" style="margin-top:8px;">数据保存在本机浏览器中，建议定期导出备份。</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- 弹窗挂载点 -->
+<div id="modalRoot"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ==================== 常量与数据层 ==================== */
+var NODES = ['策划','编写','初审','编加','二审','三审','发稿','一校','二校','三校','核红','质检','营销'];
+var NODE_FAGAO = 6;   // 发稿
+var NODE_BIANJIA = 3; // 编加
+var NODE_YINGXIAO = 12; // 营销
+var CATEGORIES = ['重点-自编','重点-工作室','普通-自编','普通-工作室','包销-自编','包销-工作室'];
+var LS_TOPIC = 'wb_edittrack_topics';
+var LS_PLAN  = 'wb_edittrack_plans';
+var LS_PROFILE = 'wb_edittrack_profile';
+
+var state = {
+  topics: [],
+  plans: {},
+  profile: {name:'', years:'', title:''},
+  page: 'dashboard',
+  kanbanFilter: 'all',
+  periodYear: null,
+  periodQuarter: 'Y'
+};
+
+function loadAll(){
+  try{ state.topics = JSON.parse(localStorage.getItem(LS_TOPIC)) || []; }catch(e){ state.topics = []; }
+  try{ state.plans = JSON.parse(localStorage.getItem(LS_PLAN)) || {}; }catch(e){ state.plans = {}; }
+  try{ state.profile = JSON.parse(localStorage.getItem(LS_PROFILE)) || {name:'',years:'',title:''}; }catch(e){}
+}
+function saveTopics(){ localStorage.setItem(LS_TOPIC, JSON.stringify(state.topics)); }
+function savePlans(){ localStorage.setItem(LS_PLAN, JSON.stringify(state.plans)); }
+function saveProfile(){ localStorage.setItem(LS_PROFILE, JSON.stringify(state.profile)); }
+
+function newTopic(o){
+  var nd = {};
+  nd[o.node||0] = o.startDate;
+  return {
+    id: 't'+Date.now()+Math.floor(Math.random()*1000),
+    title: o.title||'', author: o.author||'', category: o.category||CATEGORIES[0],
+    startDate: o.startDate||todayStr(), school: o.school||'',
+    topicNo: o.topicNo||'', bookNo: o.bookNo||'', planDate: o.planDate||'',
+    node: o.node||0, nodeDates: nd, reminders: o.reminders||[],
+    editor: o.editor||'', reader: o.reader||'',
+    sales: o.sales||[], schoolSales: o.schoolSales||[],
+    createdAt: todayStr()
+  };
+}
+
+/* ==================== 工具函数 ==================== */
+function todayStr(){
+  var d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function daysBetween(a,b){
+  return Math.floor((new Date(b) - new Date(a)) / 86400000);
+}
+function esc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function toast(msg){
+  var el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(function(){ el.classList.remove('show'); }, 2200);
+}
+function stageOf(node){
+  if(node < NODE_BIANJIA) return 'writing';   // 编写中
+  if(node < NODE_FAGAO) return 'prepub';      // 发稿前
+  if(node < NODE_YINGXIAO) return 'presale';  // 出版前
+  return 'marketing';                          // 营销中
+}
+var STAGE_LABEL = {writing:'编写中', prepub:'发稿前', presale:'出版前', marketing:'营销中'};
+
+/* ==================== 统一刷新入口（铁律9：渲染函数互不调用） ==================== */
+function refreshAll(){
+  renderMetrics();
+  renderFlowStats();
+  renderKanbanTabs();
+  renderTopicGrid();
+  renderWarnings();
+  renderProfile();
+}
+
+/* ==================== 页面切换 ==================== */
+function switchPage(p){
+  state.page = p;
+  document.querySelectorAll('.page').forEach(function(el){ el.classList.remove('active'); });
+  document.getElementById('page-'+p).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(el){
+    el.classList.toggle('active', el.getAttribute('data-page')===p);
+  });
+}
+
+/* ==================== 工作成果看板 ==================== */
+function initPeriodSelects(){
+  var sel = document.getElementById('periodYear');
+  var years = {};
+  years[new Date().getFullYear()] = true;
+  state.topics.forEach(function(t){
+    if(t.startDate) years[parseInt(t.startDate.slice(0,4))] = true;
+  });
+  var list = Object.keys(years).map(Number).sort(function(a,b){return b-a;});
+  sel.innerHTML = list.map(function(y){
+    return '<option value="'+y+'"'+(y===state.periodYear?' selected':'')+'>'+y+'年</option>';
+  }).join('');
+  renderQuarterSeg();
+}
+function renderQuarterSeg(){
+  var qs = [['Y','全年'],['Q1','Q1'],['Q2','Q2'],['Q3','Q3'],['Q4','Q4']];
+  document.getElementById('quarterSeg').innerHTML = qs.map(function(q){
+    return '<button class="'+(state.periodQuarter===q[0]?'active':'')+'" onclick="setQuarter(\''+q[0]+'\')">'+q[1]+'</button>';
+  }).join('');
+}
+function setQuarter(q){
+  state.periodQuarter = q;
+  renderQuarterSeg();
+  renderMetrics();
+  renderFlowStats();
+}
+function onPeriodChange(){
+  state.periodYear = parseInt(document.getElementById('periodYear').value);
+  renderMetrics();
+  renderFlowStats();
+}
+/* 上一时间范围（全年→去年；Q1→去年Q4；其余→上一季度），预留用于环比 */
+function prevPeriodTopics(){
+  var y = state.periodYear, q = state.periodQuarter;
+  if(q === 'Y'){ y = y - 1; }
+  else if(q === 'Q1'){ y = y - 1; q = 'Q4'; }
+  else { q = 'Q' + (parseInt(q.charAt(1)) - 1); }
+  return state.topics.filter(function(t){
+    if(!t.startDate) return false;
+    if(parseInt(t.startDate.slice(0,4)) !== y) return false;
+    if(q === 'Y') return true;
+    return ('Q' + Math.ceil(parseInt(t.startDate.slice(5,7)) / 3)) === q;
+  });
+}
+function periodKey(){ return state.periodYear + '-' + state.periodQuarter; }
+function inPeriod(t){
+  if(!t.startDate) return false;
+  var y = parseInt(t.startDate.slice(0,4));
+  if(y !== state.periodYear) return false;
+  if(state.periodQuarter === 'Y') return true;
+  var m = parseInt(t.startDate.slice(5,7));
+  var q = Math.ceil(m/3);
+  return ('Q'+q) === state.periodQuarter;
+}
+function periodTopics(){ return state.topics.filter(inPeriod); }
+
+function avgPublishDays(list){
+  var arr = list.filter(function(t){ return t.nodeDates && t.nodeDates[NODE_YINGXIAO]; })
+    .map(function(t){ return daysBetween(t.startDate, t.nodeDates[NODE_YINGXIAO]); });
+  if(arr.length === 0) return null;
+  return Math.round(arr.reduce(function(a,b){return a+b;},0) / arr.length);
+}
+
+/* 进度预警：全流程总时长 > 240 天，或单节点停留 > 60 天（未出版选题） */
+function warnList(){
+  var today = todayStr();
+  var res = [];
+  state.topics.forEach(function(t){
+    if(t.node >= NODE_YINGXIAO) return;
+    var reasons = [];
+    var total = daysBetween(t.startDate, today);
+    if(total > 240) reasons.push('全流程已 '+total+' 天，超过 240 天');
+    var nodeStart = (t.nodeDates && t.nodeDates[t.node]) || t.startDate;
+    var nodeDur = daysBetween(nodeStart, today);
+    if(nodeDur > 60) reasons.push('节点「'+NODES[t.node]+'」已停留 '+nodeDur+' 天，超过 60 天');
+    if(reasons.length) res.push({t:t, total:total, reasons:reasons});
+  });
+  return res;
+}
+
+function renderMetrics(){
+  var all = state.topics;          /* 状态类指标：依据全部选题当前状态 */
+  var list = periodTopics();       /* 选题策划数：按时间范围内新建 */
+  var key = periodKey();
+  var plan = state.plans[key] == null ? '' : state.plans[key];
+  var actualFagao = all.filter(function(t){ return t.node >= NODE_FAGAO; }).length;
+  var topicCount = list.length;
+  var pubCount = all.filter(function(t){ return t.node === NODE_YINGXIAO; }).length;
+  var avg = avgPublishDays(all);
+  var warnCount = warnList().length;
+  document.getElementById('periodHint').textContent =
+    state.periodQuarter==='Y' ? state.periodYear+'年全年' : state.periodYear+'年 '+state.periodQuarter;
+
+  /* 环形完成率 */
+  var pct = (plan && plan > 0) ? Math.min(100, Math.round(actualFagao / plan * 100)) : null;
+  var C = 2 * Math.PI * 30;
+  var ringHtml = pct === null
+    ? '<div class="ring-wrap"><div class="ring-txt">-</div></div>'
+    : '<div class="ring-wrap"><svg width="76" height="76" viewBox="0 0 76 76">'
+      + '<circle cx="38" cy="38" r="30" stroke="rgba(120,81,169,.15)" stroke-width="8" fill="none"/>'
+      + '<circle cx="38" cy="38" r="30" stroke="rgb(120,81,169)" stroke-width="8" fill="none" stroke-linecap="round"'
+      + ' stroke-dasharray="'+(C * pct / 100).toFixed(1)+' '+C.toFixed(1)+'" transform="rotate(-90 38 38)"/>'
+      + '</svg><div class="ring-txt">'+pct+'%</div></div>';
+
+  document.getElementById('metricGridTop').innerHTML =
+    '<div class="metric"><input type="number" min="0" value="'+plan+'" placeholder="0" onchange="setPlan(this.value)"><div class="lbl">发稿计划</div></div>'
+    + '<div class="metric"><div class="num">'+actualFagao+'</div><div class="lbl">实际发稿</div></div>'
+    + '<div class="metric">'+ringHtml+'<div class="lbl" style="margin-top:4px;">发稿完成率</div></div>';
+  document.getElementById('metricGridBottom').innerHTML =
+    '<div class="metric"><div class="num">'+topicCount+'</div><div class="lbl">选题策划数</div></div>'
+    + '<div class="metric"><div class="num">'+pubCount+'</div><div class="lbl">出版数</div></div>'
+    + '<div class="metric"><div class="num">'+(avg===null?'-':avg)+'</div><div class="lbl">平均出版时长（天）</div></div>'
+    + '<div class="metric" style="cursor:pointer" onclick="gotoWarnings()" title="点击查看预警选题"><div class="num '+(warnCount>0?'warn':'')+'">'+warnCount+'</div><div class="lbl">进度预警</div></div>';
+}
+function setPlan(v){
+  state.plans[periodKey()] = parseInt(v) || 0;
+  savePlans();
+  renderMetrics();
+  toast('发稿计划已保存');
+}
+
+function renderFlowStats(){
+  var list = state.topics;  /* 流程统计为当前状态快照，与选题看板一致 */
+  var c = {writing:0, prepub:0, presale:0, marketing:0};
+  list.forEach(function(t){ c[stageOf(t.node)]++; });
+  var max = Math.max(c.writing, c.prepub, c.presale, c.marketing);
+  var stages = ['writing','prepub','presale','marketing'];
+  document.getElementById('flowStats').innerHTML = '<div class="step-grid">' + stages.map(function(s){
+    var hot = max > 0 && c[s] === max;
+    return '<div class="step-node'+(hot?' hot':'')+'" onclick="gotoStage(\''+s+'\')">'
+      + '<span class="step-circle">'+c[s]+'</span>'
+      + '<div class="step-lbl">'+STAGE_LABEL[s]+'</div></div>';
+  }).join('') + '</div>';
+}
+function gotoStage(s){
+  state.kanbanFilter = s;
+  switchPage('kanban');
+  renderKanbanTabs();
+  renderTopicGrid();
+}
+function gotoWarnings(){
+  switchPage('warnings');
+  renderWarnings();
+}
+function renderWarnings(){
+  var box = document.getElementById('warnList');
+  if(!box) return;
+  var items = warnList();
+  if(items.length === 0){
+    box.innerHTML = '<div class="empty-tip">当前没有预警选题，一切正常。</div>';
+    return;
+  }
+  box.innerHTML = items.map(function(it){
+    var t = it.t;
+    return '<div class="today-item overdue">'
+      + '<div class="info"><b>'+esc(t.title)+'</b>　<span class="tag">'+esc(t.category)+'</span><br>'
+      + '<span class="muted">'+esc(t.author)+' · 当前节点：'+NODES[t.node]+' · 流程中 '+it.total+' 天</span><br>'
+      + it.reasons.map(function(r){ return '<span class="badge-overdue">'+esc(r)+'</span>'; }).join('<br>')
+      + '</div>'
+      + '<button class="btn small" onclick="openTopicModal(\''+t.id+'\')">编辑详情</button>'
+      + '</div>';
+  }).join('');
+}
+
+/* ==================== 选题执行看板 ==================== */
+function renderKanbanTabs(){
+  var counts = {all: state.topics.length, writing:0, prepub:0, presale:0, marketing:0};
+  state.topics.forEach(function(t){ counts[stageOf(t.node)]++; });
+  var tabs = [['all','全部'],['writing','编写中'],['prepub','发稿前'],['presale','出版前'],['marketing','营销中']];
+  document.getElementById('kanbanTabs').innerHTML = tabs.map(function(tb){
+    return '<button class="kanban-tab '+(state.kanbanFilter===tb[0]?'active':'')+'" onclick="setKanbanFilter(\''+tb[0]+'\')">'
+      + tb[1] + ' ' + counts[tb[0]] + '</button>';
+  }).join('');
+}
+function setKanbanFilter(f){
+  state.kanbanFilter = f;
+  renderKanbanTabs();
+  renderTopicGrid();
+}
+function renderTopicGrid(){
+  var grid = document.getElementById('topicGrid');
+  var today = todayStr();
+  var list = state.topics.filter(function(t){
+    return state.kanbanFilter === 'all' || stageOf(t.node) === state.kanbanFilter;
+  });
+  if(list.length === 0){
+    grid.innerHTML = '<div class="empty-tip" style="grid-column:1/-1;">当前分类下暂无选题，点击右上角「新建选题」开始。</div>';
+    return;
+  }
+  grid.innerHTML = list.map(function(t){
+    var dur = daysBetween(t.startDate, today);
+    var overdue = t.node < NODE_YINGXIAO && t.planDate && t.planDate < today;
+    var lastReminder = t.reminders.length ? t.reminders[t.reminders.length-1] : null;
+    /* 时间轴：圆点 + 连接线，已完成紫色填充，当前节点放大 */
+    var tl = NODES.map(function(n,i){
+      var dotCls = i < t.node ? 'done' : (i === t.node ? 'current' : '');
+      var dot = '<span class="tl-dot '+dotCls+'" title="'+n+'"></span>';
+      var line = i < NODES.length - 1 ? '<span class="tl-line '+(i < t.node ? 'done' : '')+'"></span>' : '';
+      return dot + line;
+    }).join('');
+    return '<div class="topic-card">'
+      + '<div class="t-head"><div class="t-title">'+esc(t.title)+'</div>'
+      + '<button class="dots-btn" onclick="toggleCardMenu(event,\''+t.id+'\')" title="更多操作">'
+      + '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>'
+      + '</button></div>'
+      + '<div class="card-menu" id="cmenu-'+t.id+'">'
+      + '<button onclick="openReminders(\''+t.id+'\')">提醒记录（'+t.reminders.length+'）</button>'
+      + '<button class="danger" onclick="deleteTopic(\''+t.id+'\')">删除选题</button>'
+      + '</div>'
+      + '<div class="t-meta">'
+      + '作者：'+esc(t.author)+'　<span class="tag">'+esc(t.category)+'</span>'+(overdue?'<span class="tag red">已逾期</span>':'')+(t.node===NODE_YINGXIAO?'<span class="tag green">已出版</span>':'')
+      + '<br>院校：'+esc(t.school||'')
+      + '<br>选题号：'+esc(t.topicNo||'-')+'　书号：'+esc(t.bookNo||'-')
+      + '<br>启动：'+esc(t.startDate)+'　<b>流程中 '+dur+' 天</b>'
+      + '<br>计划完成：'+esc(t.planDate||'-')
+      + '<div class="r-two">最新提醒：'+(lastReminder?esc(lastReminder.text):'')+'</div>'
+      + '</div>'
+      + '<div class="tl-wrap"><div class="tl">'+tl+'</div>'
+      + '<div class="tl-cur">当前节点：<b>'+NODES[t.node]+'</b></div></div>'
+      + '<div class="topic-actions">'
+      + '<button class="btn text" onclick="openTopicModal(\''+t.id+'\')">编辑详情</button>'
+      + '</div></div>';
+  }).join('');
+}
+/* 卡片右上角「...」菜单 */
+function toggleCardMenu(ev, id){
+  ev.stopPropagation();
+  var m = document.getElementById('cmenu-' + id);
+  var wasOpen = m.classList.contains('show');
+  closeCardMenus();
+  if(!wasOpen) m.classList.add('show');
+}
+function closeCardMenus(){
+  document.querySelectorAll('.card-menu.show').forEach(function(el){ el.classList.remove('show'); });
+}
+
+function findTopic(id){
+  for(var i=0;i<state.topics.length;i++) if(state.topics[i].id===id) return state.topics[i];
+  return null;
+}
+function deleteTopic(id){
+  var t = findTopic(id);
+  if(!t) return;
+  if(!confirm('确认删除选题《'+t.title+'》？此操作不可恢复。')) return;
+  state.topics = state.topics.filter(function(x){ return x.id!==id; });
+  saveTopics();
+  refreshAll();
+  toast('已删除');
+}
+
+/* ---------- 新建 / 编辑选题弹窗 ---------- */
+function openTopicModal(id){
+  var t = id ? findTopic(id) : newTopic({});
+  var isNew = !id;
+  /* 当前节点最近一条提醒，预填到输入框 */
+  var curReminder = '';
+  for(var ri = t.reminders.length - 1; ri >= 0; ri--){
+    if(t.reminders[ri].node === t.node){ curReminder = t.reminders[ri].text; break; }
+  }
+  var nodeOpts = NODES.map(function(n,i){
+    return '<option value="'+i+'"'+(i===t.node?' selected':'')+'>'+n+'</option>';
+  }).join('');
+  var catOpts = CATEGORIES.map(function(c){
+    return '<option value="'+c+'"'+(c===t.category?' selected':'')+'>'+c+'</option>';
+  }).join('');
+  var salesRows = t.sales.map(function(s,i){
+    return salesRowHtml(i, s.year, s.copies, s.amount);
+  }).join('');
+  var schoolRows = t.schoolSales.map(function(s,i){
+    return schoolRowHtml(i, s.name, s.copies);
+  }).join('');
+  var html = '<div class="modal-mask show" id="topicMask" onclick="if(event.target===this)closeModal()">'
+    + '<div class="modal">'
+    + '<h3>'+(isNew?'新建选题':'编辑选题')+'</h3>'
+    + '<input type="hidden" id="f_id" value="'+(isNew?'':t.id)+'">'
+    + '<div class="form-grid">'
+    + '<div class="f-field"><label>书名 <span class="req">*</span></label><input id="f_title" value="'+esc(t.title)+'"></div>'
+    + '<div class="f-field"><label>作者 <span class="req">*</span></label><input id="f_author" value="'+esc(t.author)+'"></div>'
+    + '<div class="f-field"><label>选题类别 <span class="req">*</span></label><select id="f_category">'+catOpts+'</select></div>'
+    + '<div class="f-field"><label>启动时间 <span class="req">*</span></label><input type="date" id="f_start" value="'+esc(t.startDate)+'"></div>'
+    + '<div class="f-field"><label>院校</label><input id="f_school" value="'+esc(t.school)+'"></div>'
+    + '<div class="f-field"><label>选题号</label><input id="f_topicNo" value="'+esc(t.topicNo)+'"></div>'
+    + '<div class="f-field"><label>书号</label><input id="f_bookNo" value="'+esc(t.bookNo)+'"></div>'
+    + '<div class="f-field"><label>计划完成时间</label><input type="date" id="f_planDate" value="'+esc(t.planDate)+'"></div>'
+    + '<div class="f-field"><label>当前节点</label><select id="f_node">'+nodeOpts+'</select></div>'
+    + '<div class="f-field"><label>编加人</label><input id="f_editor" value="'+esc(t.editor)+'"></div>'
+    + '<div class="f-field"><label>通读人</label><input id="f_reader" value="'+esc(t.reader)+'"></div>'
+    + '<div class="f-field full"><label>节点提醒事项（100 字以内）</label>'
+    + '<textarea id="f_reminder" maxlength="100" placeholder="填写后保存即记入当前节点的提醒记录">'+esc(curReminder)+'</textarea></div>'
+    + '<div class="f-field full"><label>销售流向（年度销售册数 / 年度码洋，单位：万）</label>'
+    + '<div class="sub-list" id="salesList">'+salesRows+'</div>'
+    + '<button type="button" class="btn text" onclick="addSalesRow()">+ 添加年度</button></div>'
+    + '<div class="f-field full"><label>院校流向（院校名称 + 册数）</label>'
+    + '<div class="sub-list" id="schoolSalesList">'+schoolRows+'</div>'
+    + '<button type="button" class="btn text" onclick="addSchoolRow()">+ 添加院校</button></div>'
+    + '</div>'
+    + '<div class="modal-actions">'
+    + '<button class="btn" onclick="closeModal()">取消</button>'
+    + '<button class="btn primary" onclick="saveTopicForm()">保存</button>'
+    + '</div></div></div>';
+  document.getElementById('modalRoot').innerHTML = html;
+}
+function salesRowHtml(i, year, copies, amount){
+  return '<div class="sub-item">'
+    + '<input type="number" class="s_year" placeholder="年份" value="'+esc(year||'')+'">'
+    + '<input type="number" class="s_copies" placeholder="册数" value="'+esc(copies==null?'':copies)+'">'
+    + '<input type="number" class="s_amount" placeholder="码洋(万)" value="'+esc(amount==null?'':amount)+'">'
+    + '<button type="button" class="btn small danger" onclick="this.parentNode.remove()">删</button></div>';
+}
+function schoolRowHtml(i, name, copies){
+  return '<div class="sub-item">'
+    + '<input class="sc_name" placeholder="院校名称" value="'+esc(name||'')+'">'
+    + '<input type="number" class="sc_copies" placeholder="册数" value="'+esc(copies==null?'':copies)+'">'
+    + '<button type="button" class="btn small danger" onclick="this.parentNode.remove()">删</button></div>';
+}
+function addSalesRow(){
+  document.getElementById('salesList').insertAdjacentHTML('beforeend', salesRowHtml(0,'','',''));
+}
+function addSchoolRow(){
+  document.getElementById('schoolSalesList').insertAdjacentHTML('beforeend', schoolRowHtml(0,'',''));
+}
+function saveTopicForm(){
+  var id = document.getElementById('f_id').value;
+  var title = document.getElementById('f_title').value.trim();
+  var author = document.getElementById('f_author').value.trim();
+  var start = document.getElementById('f_start').value;
+  if(!title || !author || !start){
+    toast('书名、作者、启动时间为必填项');
+    return;
+  }
+  var t = id ? findTopic(id) : newTopic({});
+  var newNode = parseInt(document.getElementById('f_node').value);
+  t.title = title; t.author = author; t.startDate = start;
+  t.category = document.getElementById('f_category').value;
+  t.school = document.getElementById('f_school').value.trim();
+  t.topicNo = document.getElementById('f_topicNo').value.trim();
+  t.bookNo = document.getElementById('f_bookNo').value.trim();
+  t.planDate = document.getElementById('f_planDate').value;
+  t.editor = document.getElementById('f_editor').value.trim();
+  t.reader = document.getElementById('f_reader').value.trim();
+  if(newNode !== t.node){
+    t.node = newNode;
+    if(!t.nodeDates[newNode]) t.nodeDates[newNode] = todayStr();
+  }
+  var reminder = document.getElementById('f_reminder').value.trim();
+  /* 与当前节点最近一条提醒比对：有改动才写入，旧内容保留在提醒记录中 */
+  var lastForNode = null;
+  for(var ri = t.reminders.length - 1; ri >= 0; ri--){
+    if(t.reminders[ri].node === t.node){ lastForNode = t.reminders[ri]; break; }
+  }
+  if(reminder && (!lastForNode || lastForNode.text !== reminder)){
+    t.reminders.push({node: t.node, text: reminder.slice(0,100), date: todayStr()});
+  }
+  t.sales = [];
+  document.querySelectorAll('#salesList .sub-item').forEach(function(row){
+    var y = row.querySelector('.s_year').value;
+    var c = row.querySelector('.s_copies').value;
+    var a = row.querySelector('.s_amount').value;
+    if(y) t.sales.push({year:y, copies:parseInt(c)||0, amount:parseFloat(a)||0});
+  });
+  t.schoolSales = [];
+  document.querySelectorAll('#schoolSalesList .sub-item').forEach(function(row){
+    var n = row.querySelector('.sc_name').value.trim();
+    var c = row.querySelector('.sc_copies').value;
+    if(n) t.schoolSales.push({name:n, copies:parseInt(c)||0});
+  });
+  if(!id) state.topics.push(t);
+  saveTopics();
+  closeModal();
+  initPeriodSelects();
+  refreshAll();
+  toast('已保存');
+}
+function openReminders(id){
+  var t = findTopic(id);
+  if(!t) return;
+  var items = t.reminders.slice().reverse().map(function(r){
+    return '<div class="reminder-item"><div class="r-head"><span>节点：'+NODES[r.node]+'</span><span>'+esc(r.date)+'</span></div>'+esc(r.text)+'</div>';
+  }).join('');
+  document.getElementById('modalRoot').innerHTML =
+    '<div class="modal-mask show" onclick="if(event.target===this)closeModal()"><div class="modal">'
+    + '<h3>《'+esc(t.title)+'》提醒记录</h3>'
+    + (items || '<div class="empty-tip">暂无提醒记录</div>')
+    + '<div class="modal-actions"><button class="btn" onclick="closeModal()">关闭</button></div>'
+    + '</div></div>';
+}
+function closeModal(){
+  document.getElementById('modalRoot').innerHTML = '';
+}
+
+/* ==================== 个人档案 ==================== */
+function renderProfile(){
+  var p = state.profile;
+  document.getElementById('profileGrid').innerHTML =
+    '<div class="profile-cell"><div class="p-lbl">姓名</div><div class="p-val">'+esc(p.name||'-')+'</div></div>'
+    + '<div class="profile-cell"><div class="p-lbl">工龄</div><div class="p-val">'+(p.years?esc(p.years)+' 年':'-')+'</div></div>'
+    + '<div class="profile-cell"><div class="p-lbl">职称</div><div class="p-val">'+esc(p.title||'-')+'</div></div>';
+}
+function openProfileModal(){
+  var p = state.profile;
+  document.getElementById('modalRoot').innerHTML =
+    '<div class="modal-mask show" onclick="if(event.target===this)closeModal()"><div class="modal">'
+    + '<h3>编辑个人档案</h3>'
+    + '<div class="form-grid">'
+    + '<div class="f-field"><label>姓名</label><input id="p_name" value="'+esc(p.name)+'"></div>'
+    + '<div class="f-field"><label>工龄（年）</label><input type="number" min="0" id="p_years" value="'+esc(p.years)+'"></div>'
+    + '<div class="f-field full"><label>职称</label><input id="p_title" value="'+esc(p.title)+'" placeholder="如：编辑 / 副编审 / 编审"></div>'
+    + '</div>'
+    + '<div class="modal-actions">'
+    + '<button class="btn" onclick="closeModal()">取消</button>'
+    + '<button class="btn primary" onclick="saveProfileForm()">保存</button>'
+    + '</div></div></div>';
+}
+function saveProfileForm(){
+  state.profile = {
+    name: document.getElementById('p_name').value.trim(),
+    years: document.getElementById('p_years').value,
+    title: document.getElementById('p_title').value.trim()
+  };
+  saveProfile();
+  closeModal();
+  renderProfile();
+  toast('档案已保存');
+}
+
+/* ==================== 数据备份 ==================== */
+function exportJSON(){
+  var data = {
+    topics: state.topics,
+    plans: state.plans,
+    profile: state.profile,
+    exportedAt: todayStr()
+  };
+  var blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '编辑工作追踪系统_备份_' + todayStr() + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('备份文件已导出');
+}
+function importJSON(ev){
+  var file = ev.target.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(){
+    try{
+      var data = JSON.parse(reader.result);
+      if(!data.topics || !Array.isArray(data.topics)) throw new Error('bad');
+      if(!confirm('导入将覆盖当前全部数据（'+state.topics.length+' 条选题 → '+data.topics.length+' 条），确认继续？建议先导出备份。')){
+        return;
+      }
+      state.topics = data.topics;
+      state.plans = data.plans || {};
+      state.profile = data.profile || {name:'',years:'',title:''};
+      saveTopics(); savePlans(); saveProfile();
+      initPeriodSelects();
+      refreshAll();
+      toast('导入成功');
+    }catch(e){
+      toast('文件格式不正确，导入失败');
+    }
+  };
+  reader.readAsText(file);
+  ev.target.value = '';
+}
+function clearAllData(){
+  if(!confirm('确认清空全部选题数据？此操作不可恢复，建议先导出备份。')) return;
+  if(!confirm('再次确认：清空后所有选题将被永久删除，是否继续？')) return;
+  state.topics = [];
+  saveTopics();
+  initPeriodSelects();
+  refreshAll();
+  toast('已清空全部数据');
+}
+
+/* ==================== 初始化 ==================== */
+document.addEventListener('DOMContentLoaded', function(){
+  loadAll();
+  state.periodYear = new Date().getFullYear();
+  initPeriodSelects();
+  refreshAll();
+  document.addEventListener('click', closeCardMenus);
+});
+</script>
+</body>
+</html>
