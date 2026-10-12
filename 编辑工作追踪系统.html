@@ -13,6 +13,7 @@
   --white:#ffffff;
   --red:#c0392b;
   --green:#1e8449;
+  --cyan:#0e7490;
   --muted:#5b5470;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -46,8 +47,9 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 #page-dashboard .page-title{margin-bottom:0;}
 #page-kanban .page-title{font-size:30px;margin-bottom:20px;}
 #page-profile .page-title{font-size:30px;margin-bottom:20px;}
-#page-warnings .page-title{font-size:30px;margin-bottom:4px;}
-#page-warnings .page-desc{margin-bottom:20px;}
+#page-todo .page-title{font-size:30px;margin-bottom:20px;}
+/* to-do 页面整高 flex：周视图栏可延伸至页底 */
+#page-todo.active{display:flex;flex-direction:column;min-height:calc(100vh - 48px);}
 #dashBody{flex:1;display:flex;flex-direction:column;justify-content:flex-start;gap:20px;padding:20px 0 0;}
 #dashBody .card{margin-bottom:0;}
 .page-title{font-size:22px;font-weight:bold;margin-bottom:4px;position:relative;padding-bottom:10px;}
@@ -79,16 +81,6 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 }
 .tag.red{background:#f9e2df;border-color:var(--red);color:var(--red);}
 .tag.green{background:#e2f3e8;border-color:var(--green);color:var(--green);}
-
-/* ---------- 今天要处理 ---------- */
-.today-item{
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:10px 12px;border:1px solid var(--line);border-radius:8px;
-  background:var(--white);margin-bottom:8px;flex-wrap:wrap;
-}
-.today-item.overdue{border-color:var(--red);background:#fdf1ef;}
-.today-item .info{flex:1;min-width:180px;}
-.badge-overdue{color:var(--red);font-weight:bold;font-size:13px;}
 
 /* ---------- 指标网格 ---------- */
 .metric-grid{display:grid;gap:12px;}
@@ -192,6 +184,21 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 .card-menu button:hover{background:#f7f6fb;}
 .card-menu button.danger{color:var(--red);}
 
+/* 预警警示按钮与 hover 提示框 */
+.t-head{align-items:center;}
+.t-head .t-title{flex:0 1 auto;min-width:0;}
+.t-spacer{flex:1;}
+.warn-badge{position:relative;flex-shrink:0;margin-left:6px;display:inline-flex;cursor:help;}
+.warn-badge svg{width:16px;height:16px;color:var(--red);}
+.warn-tip{
+  display:none;position:absolute;top:22px;left:0;z-index:50;
+  background:#fff;border:1px solid #f0c8c2;border-radius:8px;
+  box-shadow:0 8px 24px rgba(30,20,60,.14);
+  padding:8px 12px;font-size:12px;color:var(--red);line-height:1.7;
+  min-width:200px;max-width:260px;font-weight:normal;
+}
+.warn-badge:hover .warn-tip{display:block;}
+
 /* 节点时间轴 */
 .tl-wrap{margin-top:auto;}
 .tl{display:flex;align-items:center;}
@@ -204,7 +211,7 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 .tl-cur b{color:var(--line);}
 /* 最新提醒：固定两行，超出省略，不足留空 */
 .r-two{
-  font-size:13px;color:var(--muted);line-height:1.7;min-height:3.4em;
+  font-size:13px;color:var(--muted);line-height:1.7;min-height:3.4em;font-weight:bold;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
 }
 .topic-card .t-title{font-size:16px;font-weight:bold;}
@@ -216,9 +223,11 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 }
 .node-dot.done{background:var(--line);color:#fff;}
 .node-dot.current{background:var(--panel);color:var(--ink);font-weight:bold;border-width:2px;}
-.topic-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;justify-content:flex-end;}
+/* 左「推进节点」右「编辑详情」，两端水平对齐 */
+.topic-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;justify-content:space-between;}
 .btn.text{border:none;background:transparent;color:var(--line);padding:4px 8px;min-height:36px;}
 .btn.text:hover{background:#f4f2fa;}
+.btn.text:disabled{color:#c9c4d4;background:transparent;cursor:default;}
 .progress-line{font-size:12px;color:var(--muted);}
 .progress-line b{color:var(--ink);}
 
@@ -230,10 +239,26 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 .modal-mask.show{display:flex;}
 .modal{
   background:var(--white);border:1px solid #e7e4f0;border-radius:16px;
-  width:100%;max-width:640px;max-height:88vh;overflow:auto;padding:20px;
+  width:100%;max-width:640px;max-height:88vh;padding:0;
   box-shadow:0 12px 40px rgba(30,20,60,.18);
+  display:flex;flex-direction:column;overflow:hidden;
 }
-.modal h3{margin-bottom:14px;font-size:17px;}
+.modal-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 20px 10px;flex-shrink:0;
+}
+.modal-head h3{font-size:17px;}
+.modal-close{
+  border:none;background:transparent;width:36px;height:36px;min-height:36px;padding:0;
+  border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);
+}
+.modal-close:hover{background:#f4f2fa;color:var(--ink);}
+.modal-close svg{width:18px;height:18px;}
+.modal-body{flex:1;overflow:auto;padding:4px 20px 16px;}
+.modal-actions{
+  display:flex;justify-content:flex-end;gap:10px;flex-shrink:0;
+  padding:12px 20px;border-top:1px solid #e7e4f0;background:var(--white);
+}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .form-grid .full{grid-column:1/-1;}
 .f-field label{display:block;font-size:13px;margin-bottom:4px;color:var(--muted);}
@@ -242,7 +267,6 @@ input,select,textarea{font-family:inherit;font-size:16px;}
   width:100%;padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--white);
 }
 .f-field textarea{resize:vertical;min-height:64px;}
-.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;}
 .sub-list{border:1px dashed var(--line);border-radius:8px;padding:10px;margin-top:6px;}
 .sub-list .sub-item{display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;}
 .sub-list .sub-item input{flex:1;min-width:70px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;}
@@ -270,6 +294,195 @@ input,select,textarea{font-family:inherit;font-size:16px;}
   border:1.5px dashed var(--line);border-radius:10px;background:var(--white);
 }
 
+/* ---------- 每日to-do ---------- */
+/* 统计卡：四列横排，数字为主视觉 */
+.todo-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+.tstat{
+  background:var(--white);border:1px solid #e7e4f0;border-radius:14px;
+  padding:14px 16px;box-shadow:0 2px 8px rgba(30,20,60,.04);
+  display:flex;flex-direction:column;justify-content:center;gap:4px;
+}
+.tstat-lbl{font-size:12px;color:var(--muted);}
+.tstat-num{font-size:22px;font-weight:bold;font-variant-numeric:tabular-nums;line-height:1.2;}
+.tstat-rate{flex-direction:row;align-items:center;justify-content:space-between;}
+.tstat-rate svg{flex-shrink:0;}
+/* 任务列表面板：整宽自然向下延伸 */
+.todo-panel{
+  background:var(--white);border:1px solid #e7e4f0;border-radius:14px;
+  padding:18px;box-shadow:0 2px 8px rgba(30,20,60,.04);
+  flex:1;display:flex;flex-direction:column;
+}
+.todo-panel h3{font-size:16px;margin-bottom:14px;}
+.td-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.td-head h3{margin-bottom:0;}
+.td-sec{font-size:12px;color:var(--muted);margin:12px 0 6px;}
+.td-sec.red{color:var(--red);font-weight:bold;}
+.td-sec.cyan{color:var(--cyan);font-weight:bold;}
+.td-sec.green{color:var(--green);font-weight:bold;}
+/* 周期翻页 ‹ › */
+.pnav{display:inline-flex;align-items:center;gap:6px;}
+.pnav button{
+  width:36px;height:36px;border-radius:999px;border:1px solid #e7e4f0;background:var(--white);
+  color:var(--line);font-size:16px;line-height:1;
+  display:inline-flex;align-items:center;justify-content:center;
+}
+.pnav button:hover{border-color:var(--line);}
+/* 「今天」文字按钮：回到当前周期，已在当前周期时置灰 */
+.pnav .pnav-today{width:auto;height:28px;padding:0 12px;font-size:12px;border-radius:999px;}
+.pnav .pnav-today:disabled{color:#c9c4d4;border-color:#eeeaf6;cursor:default;background:#fbfafc;}
+.pnav-label{font-size:13px;color:var(--muted);min-width:120px;text-align:center;font-variant-numeric:tabular-nums;}
+
+/* 日视图条目：每条一行，细分隔线 */
+.todo-item{
+  display:flex;align-items:center;gap:8px;padding:10px 8px;border-radius:8px;
+  border-bottom:1px solid #f2eff8;
+  cursor:pointer;font-size:14px;
+}
+.todo-item:hover{background:#f7f6fb;}
+.todo-item.overdue .todo-detail{color:var(--red);font-weight:bold;}
+.todo-item.done .todo-detail{color:var(--muted);text-decoration:line-through;}
+.todo-item.done .todo-time,.todo-item.done .todo-tag,.todo-item.done .todo-node{opacity:.45;}
+.todo-check{
+  width:18px;height:18px;min-width:18px;accent-color:var(--cyan);cursor:pointer;margin:0;
+}
+.todo-item.done .todo-check{accent-color:var(--green);}
+/* 标签按实际字数完整展示（最多6字） */
+.todo-tag,.todo-node{
+  flex-shrink:0;font-size:11px;padding:2px 6px;border-radius:6px;
+  background:#ece7f8;color:var(--line);
+  white-space:nowrap;
+}
+.todo-tag{min-width:0;}
+.todo-detail{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.todo-time{flex-shrink:0;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;}
+.rmk-badge{position:relative;flex-shrink:0;display:inline-flex;color:#c9c4d4;}
+.rmk-badge.has{color:#d97706;}
+.rmk-badge svg{width:15px;height:15px;}
+.rmk-tip{
+  display:none;position:absolute;bottom:22px;right:0;z-index:50;
+  background:#fff;border:1px solid #f0dfc8;border-radius:8px;
+  box-shadow:0 8px 24px rgba(30,20,60,.14);
+  padding:8px 12px;font-size:12px;color:#92580a;line-height:1.6;
+  min-width:160px;max-width:240px;
+}
+.rmk-badge.has:hover .rmk-tip{display:block;}
+
+/* 周视图：七栏等宽且固定（minmax(0,1fr) 防止长文本撑破栏宽），整列撑满至页底 */
+.wk-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;flex:1;}
+.wk-col{border:1px solid #eeeaf6;border-radius:10px;padding:8px 6px;min-height:150px;background:#fbfafc;min-width:0;display:flex;flex-direction:column;}
+.wk-col.today{border-color:var(--line);background:#f6f2fc;}
+/* 栏头：周几+日期放大，下方横线与任务区分隔 */
+.wk-dhead{
+  font-size:14px;color:var(--muted);text-align:center;line-height:1.5;
+  padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid #eeeaf6;
+}
+.wk-dhead b{display:block;font-size:17px;color:var(--ink);}
+.wk-col.today .wk-dhead b{color:var(--line);}
+.wk-todo{
+  display:flex;align-items:flex-start;gap:5px;
+  font-size:12px;padding:3px 5px;border-radius:5px;margin-bottom:3px;cursor:pointer;
+}
+.wk-todo:hover{background:#efeaf8;}
+.wk-todo.overdue{color:var(--red);font-weight:bold;}
+.wk-todo.done{color:var(--muted);text-decoration:line-through;}
+/* 状态框：未完成=青框、逾期=红框、已完成=绿底白勾 */
+.wk-st{width:12px;height:12px;min-width:12px;border-radius:3px;border:1.5px solid var(--cyan);position:relative;}
+.wk-todo.overdue .wk-st{border-color:var(--red);}
+.wk-todo.done .wk-st{border-color:var(--green);background:var(--green);}
+.wk-todo.done .wk-st::after{
+  content:'';position:absolute;left:2px;top:2px;width:6px;height:3px;
+  border-left:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:rotate(-45deg);
+}
+/* 状态框与首行文字对齐 */
+.wk-todo .wk-st{margin-top:2px;}
+/* 任务文本：最多两行，超出省略号（flex 下需包子元素才能出省略号） */
+.wk-txt{
+  flex:1;min-width:0;line-height:1.4;word-break:break-all;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;text-overflow:ellipsis;
+}
+/* 栏底新建按钮：虚线框，吸在栏底部 */
+.wk-add{
+  margin-top:auto;text-align:center;font-size:12px;color:var(--muted);
+  padding:4px 0;border-radius:6px;cursor:pointer;border:1px dashed #e0dbf0;
+}
+.wk-add:hover{color:var(--line);border-color:var(--line);background:#f6f2fc;}
+
+/* 月视图日历：每一栏与每一行间距相同且固定，行高一致 */
+/* 周几表头独立于日历网格（避免被行高撑出空行），下方通长分割横线 */
+.cal-dow-row{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:8px;
+  border-bottom:1px solid #eeeaf6;padding-bottom:6px;margin-bottom:8px;
+}
+.cal-dow{font-size:12px;color:var(--muted);text-align:center;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;grid-auto-rows:134px;}
+.cal-cell{
+  border:1px solid #eeeaf6;border-radius:10px;padding:6px;background:#fbfafc;
+  font-size:12px;overflow:hidden;min-width:0;
+}
+.cal-cell.today{border-color:var(--line);background:#f6f2fc;}
+.cal-date{font-weight:bold;font-size:13px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;}
+.cal-cell.today .cal-date{color:var(--line);}
+/* 月格右上角新建按钮 */
+.cal-add{
+  width:18px;height:18px;min-height:18px;border-radius:5px;border:none;background:transparent;
+  color:#c9c4d4;font-size:14px;font-weight:normal;line-height:1;padding:0;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.cal-add:hover{background:#ece7f8;color:var(--line);}
+/* 月历任务条：状态框+详情，最多两行，超出省略号 */
+.cal-todo{
+  display:flex;align-items:flex-start;gap:4px;
+  padding:1px 4px;border-radius:4px;margin-bottom:2px;cursor:pointer;
+}
+.cal-todo:hover{background:#efeaf8;}
+.cal-todo .wk-st{margin-top:2px;}
+.cal-todo.overdue{color:var(--red);font-weight:bold;}
+.cal-todo.overdue .wk-st{border-color:var(--red);}
+.cal-todo.done{color:var(--muted);}
+.cal-todo.done .cal-txt{text-decoration:line-through;}
+.cal-txt{
+  flex:1;min-width:0;line-height:1.4;word-break:break-all;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;text-overflow:ellipsis;
+}
+/* 「还有 n 项 ›」折叠链接 */
+.cal-more{color:var(--line);padding:1px 4px;font-size:12px;cursor:pointer;}
+.cal-more:hover{text-decoration:underline;}
+
+/* 通用 hover 浮窗（关联to-do列表等） */
+.tip-wrap{position:relative;}
+.tip-box{
+  display:none;position:absolute;top:20px;left:0;z-index:50;
+  background:#fff;border:1px solid #e7e4f0;border-radius:8px;
+  box-shadow:0 8px 24px rgba(30,20,60,.14);
+  padding:8px 12px;font-size:12px;color:var(--ink);line-height:1.7;
+  min-width:180px;max-width:280px;font-weight:normal;white-space:normal;
+}
+.tip-wrap:hover .tip-box{display:block;}
+
+/* 选题卡：当前节点注意按钮 */
+.note-badge{position:relative;display:inline-flex;margin-left:6px;cursor:help;vertical-align:-2px;}
+.note-badge svg{width:14px;height:14px;color:#d97706;}
+.note-tip{
+  display:none;position:absolute;top:20px;left:0;z-index:50;
+  background:#fff;border:1px solid #f0dfc8;border-radius:8px;
+  box-shadow:0 8px 24px rgba(30,20,60,.14);
+  padding:8px 12px;font-size:12px;color:#92580a;line-height:1.7;
+  min-width:200px;max-width:260px;font-weight:normal;
+}
+.note-badge:hover .note-tip{display:block;}
+/* 整卡点击进编辑已移除：仅「编辑详情」按钮可进，卡片不再显示手型 */
+
+/* 选题to-do详情列表 */
+.todo-rel-item{
+  display:flex;align-items:center;gap:8px;padding:9px 8px;border-radius:8px;
+  font-size:14px;cursor:pointer;
+}
+.todo-rel-item:hover{background:#f7f6fb;}
+.todo-rel-item.done .todo-detail{color:var(--muted);text-decoration:line-through;}
+.todo-rel-item .rel-date{flex-shrink:0;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;}
+
 /* ---------- 移动端 ---------- */
 @media (max-width:768px){
   .layout{flex-direction:column;}
@@ -290,6 +503,12 @@ input,select,textarea{font-family:inherit;font-size:16px;}
   .step-grid{flex-wrap:wrap;}
   .step-node{flex:1 1 40%;margin-bottom:14px;}
   .seg button{padding:6px 10px;font-size:12px;}
+  .todo-stats{grid-template-columns:repeat(2,1fr);}
+  .pnav-label{min-width:96px;font-size:12px;}
+  .wk-grid{grid-template-columns:repeat(7,minmax(120px,1fr));overflow-x:auto;}
+  .cal-dow-row{grid-template-columns:repeat(7,minmax(88px,1fr));}
+  .todo-panel{overflow-x:auto;}
+  .cal-grid{grid-template-columns:repeat(7,minmax(88px,1fr));}
 }
 </style>
 </head>
@@ -297,17 +516,17 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 <div class="layout">
   <nav class="sidebar">
     <div class="brand">编辑工作追踪系统</div>
-    <button class="nav-item active" data-page="dashboard" onclick="switchPage('dashboard')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
-      工作成果看板
+    <button class="nav-item active" data-page="todo" onclick="switchPage('todo')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12.5l3 3 5-6"/></svg>
+      每日to-do
     </button>
     <button class="nav-item" data-page="kanban" onclick="switchPage('kanban')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h6v16H4zM14 4h6v10h-6z"/></svg>
       选题执行看板
     </button>
-    <button class="nav-item" data-page="warnings" onclick="switchPage('warnings')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3L2 20h20L12 3zM12 10v4M12 17.5v.5"/></svg>
-      进度预警
+    <button class="nav-item" data-page="dashboard" onclick="switchPage('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+      工作成果看板
     </button>
     <button class="nav-item" data-page="profile" onclick="switchPage('profile')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6 8-6s8 2 8 6"/></svg>
@@ -316,8 +535,22 @@ input,select,textarea{font-family:inherit;font-size:16px;}
   </nav>
 
   <main class="main">
-    <!-- 页面一：工作成果看板 -->
-    <section id="page-dashboard" class="page active">
+    <!-- 页面一：每日to-do -->
+    <section id="page-todo" class="page active">
+      <div class="page-title">每日to-do</div>
+      <div class="row" style="justify-content:space-between;margin-bottom:14px;">
+        <div class="seg" id="todoTabs"></div>
+        <button class="btn primary" onclick="openTodoModal(null)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          创建to-do
+        </button>
+      </div>
+      <div class="todo-stats" id="todoStats"></div>
+      <div class="todo-panel" id="todoDetail"></div>
+    </section>
+
+    <!-- 页面二：工作成果看板 -->
+    <section id="page-dashboard" class="page">
       <div class="page-title" style="font-size:30px;">工作成果看板</div>
 
       <div id="dashBody">
@@ -340,7 +573,7 @@ input,select,textarea{font-family:inherit;font-size:16px;}
       </div>
     </section>
 
-    <!-- 页面二：选题执行看板 -->
+    <!-- 页面三：选题执行看板 -->
     <section id="page-kanban" class="page">
       <div class="page-title">选题执行看板</div>
       <div class="row" style="justify-content:space-between;margin-bottom:14px;">
@@ -353,17 +586,9 @@ input,select,textarea{font-family:inherit;font-size:16px;}
       <div class="topic-grid" id="topicGrid"></div>
     </section>
 
-    <!-- 页面三：进度预警 -->
-    <section id="page-warnings" class="page">
-      <div class="page-title">进度预警</div>
-      <div class="page-desc">全流程总时长超过 240 天，或单节点停留超过 60 天的未出版选题</div>
-      <div id="warnList"></div>
-    </section>
-
     <!-- 页面四：个人档案 -->
     <section id="page-profile" class="page">
       <div class="page-title">个人档案</div>
-      <div class="page-desc">基本信息用于看板展示，仅保存在本机</div>
       <div class="card">
         <div class="profile-grid" id="profileGrid"></div>
         <div style="margin-top:14px;">
@@ -401,17 +626,23 @@ var NODES = ['策划','编写','初审','编加','二审','三审','发稿','一
 var NODE_FAGAO = 6;   // 发稿
 var NODE_BIANJIA = 3; // 编加
 var NODE_YINGXIAO = 12; // 营销
+var NODE_BIANXIE = 1; // 编写
+var NODE_CHUSHEN = 2; // 初审
 var CATEGORIES = ['重点-自编','重点-工作室','普通-自编','普通-工作室','包销-自编','包销-工作室'];
 var LS_TOPIC = 'wb_edittrack_topics';
 var LS_PLAN  = 'wb_edittrack_plans';
 var LS_PROFILE = 'wb_edittrack_profile';
+var LS_TODO  = 'wb_edittrack_todos';
 
 var state = {
   topics: [],
   plans: {},
   profile: {name:'', years:'', title:''},
-  page: 'dashboard',
+  todos: [],
+  page: 'todo',
   kanbanFilter: 'all',
+  todoView: 'day',
+  todoNav: {day:0, week:0, month:0},
   periodYear: null,
   periodQuarter: 'Y'
 };
@@ -420,10 +651,25 @@ function loadAll(){
   try{ state.topics = JSON.parse(localStorage.getItem(LS_TOPIC)) || []; }catch(e){ state.topics = []; }
   try{ state.plans = JSON.parse(localStorage.getItem(LS_PLAN)) || {}; }catch(e){ state.plans = {}; }
   try{ state.profile = JSON.parse(localStorage.getItem(LS_PROFILE)) || {name:'',years:'',title:''}; }catch(e){}
+  try{ state.todos = JSON.parse(localStorage.getItem(LS_TODO)) || []; }catch(e){ state.todos = []; }
 }
 function saveTopics(){ localStorage.setItem(LS_TOPIC, JSON.stringify(state.topics)); }
 function savePlans(){ localStorage.setItem(LS_PLAN, JSON.stringify(state.plans)); }
 function saveProfile(){ localStorage.setItem(LS_PROFILE, JSON.stringify(state.profile)); }
+function saveTodos(){ localStorage.setItem(LS_TODO, JSON.stringify(state.todos)); }
+
+function newTodo(o){
+  return {
+    id: 'd'+Date.now()+Math.floor(Math.random()*1000),
+    detail: o.detail||'', remark: o.remark||'',
+    dueDate: o.dueDate||todayStr(), dueTime: o.dueTime||'',
+    topicId: o.topicId||'', tag: o.tag||'',
+    node: (o.node===0||o.node)? o.node : null,
+    done: !!o.done,
+    createdAt: o.createdAt||new Date().toISOString(),
+    doneAt: o.doneAt||null
+  };
+}
 
 function newTopic(o){
   var nd = {};
@@ -470,7 +716,7 @@ function refreshAll(){
   renderFlowStats();
   renderKanbanTabs();
   renderTopicGrid();
-  renderWarnings();
+  renderTodoPage();
   renderProfile();
 }
 
@@ -547,19 +793,29 @@ function avgPublishDays(list){
   return Math.round(arr.reduce(function(a,b){return a+b;},0) / arr.length);
 }
 
-/* 进度预警：全流程总时长 > 240 天，或单节点停留 > 60 天（未出版选题） */
+/* 进度预警（仅未出版选题）：
+   ① 初审（含）之后节点：今天 − 进入初审日期 > 240 天（无初审日期回退启动时间）
+   ② 除「编写」外单节点停留 > 60 天
+   ③「编写」节点停留 > 180 天 */
 function warnList(){
   var today = todayStr();
   var res = [];
   state.topics.forEach(function(t){
     if(t.node >= NODE_YINGXIAO) return;
     var reasons = [];
-    var total = daysBetween(t.startDate, today);
-    if(total > 240) reasons.push('全流程已 '+total+' 天，超过 240 天');
+    if(t.node >= NODE_CHUSHEN){
+      var csStart = (t.nodeDates && t.nodeDates[NODE_CHUSHEN]) || t.startDate;
+      var csDur = daysBetween(csStart, today);
+      if(csDur > 240) reasons.push('总流程已进行' + csDur + '天，请抓紧往下推进');
+    }
     var nodeStart = (t.nodeDates && t.nodeDates[t.node]) || t.startDate;
     var nodeDur = daysBetween(nodeStart, today);
-    if(nodeDur > 60) reasons.push('节点「'+NODES[t.node]+'」已停留 '+nodeDur+' 天，超过 60 天');
-    if(reasons.length) res.push({t:t, total:total, reasons:reasons});
+    if(t.node === NODE_BIANXIE){
+      if(nodeDur > 180) reasons.push(NODES[t.node] + '已耗时' + nodeDur + '天，请抓紧往下推进');
+    }else{
+      if(nodeDur > 60) reasons.push(NODES[t.node] + '已耗时' + nodeDur + '天，请抓紧往下推进');
+    }
+    if(reasons.length) res.push({t:t, reasons:reasons});
   });
   return res;
 }
@@ -625,34 +881,17 @@ function gotoStage(s){
   renderTopicGrid();
 }
 function gotoWarnings(){
-  switchPage('warnings');
-  renderWarnings();
-}
-function renderWarnings(){
-  var box = document.getElementById('warnList');
-  if(!box) return;
-  var items = warnList();
-  if(items.length === 0){
-    box.innerHTML = '<div class="empty-tip">当前没有预警选题，一切正常。</div>';
-    return;
-  }
-  box.innerHTML = items.map(function(it){
-    var t = it.t;
-    return '<div class="today-item overdue">'
-      + '<div class="info"><b>'+esc(t.title)+'</b>　<span class="tag">'+esc(t.category)+'</span><br>'
-      + '<span class="muted">'+esc(t.author)+' · 当前节点：'+NODES[t.node]+' · 流程中 '+it.total+' 天</span><br>'
-      + it.reasons.map(function(r){ return '<span class="badge-overdue">'+esc(r)+'</span>'; }).join('<br>')
-      + '</div>'
-      + '<button class="btn small" onclick="openTopicModal(\''+t.id+'\')">编辑详情</button>'
-      + '</div>';
-  }).join('');
+  state.kanbanFilter = 'warning';
+  switchPage('kanban');
+  renderKanbanTabs();
+  renderTopicGrid();
 }
 
 /* ==================== 选题执行看板 ==================== */
 function renderKanbanTabs(){
-  var counts = {all: state.topics.length, writing:0, prepub:0, presale:0, marketing:0};
+  var counts = {all: state.topics.length, writing:0, prepub:0, presale:0, marketing:0, warning: warnList().length};
   state.topics.forEach(function(t){ counts[stageOf(t.node)]++; });
-  var tabs = [['all','全部'],['writing','编写中'],['prepub','发稿前'],['presale','出版前'],['marketing','营销中']];
+  var tabs = [['all','全部'],['writing','编写中'],['prepub','发稿前'],['presale','出版前'],['marketing','营销中'],['warning','进度预警']];
   document.getElementById('kanbanTabs').innerHTML = tabs.map(function(tb){
     return '<button class="kanban-tab '+(state.kanbanFilter===tb[0]?'active':'')+'" onclick="setKanbanFilter(\''+tb[0]+'\')">'
       + tb[1] + ' ' + counts[tb[0]] + '</button>';
@@ -666,11 +905,17 @@ function setKanbanFilter(f){
 function renderTopicGrid(){
   var grid = document.getElementById('topicGrid');
   var today = todayStr();
+  var warnMap = {};
+  warnList().forEach(function(it){ warnMap[it.t.id] = it.reasons; });
   var list = state.topics.filter(function(t){
+    if(state.kanbanFilter === 'warning') return !!warnMap[t.id];
     return state.kanbanFilter === 'all' || stageOf(t.node) === state.kanbanFilter;
   });
   if(list.length === 0){
-    grid.innerHTML = '<div class="empty-tip" style="grid-column:1/-1;">当前分类下暂无选题，点击右上角「新建选题」开始。</div>';
+    var tip = state.kanbanFilter === 'warning'
+      ? '当前没有预警选题，一切正常。'
+      : '当前分类下暂无选题，点击右上角「新建选题」开始。';
+    grid.innerHTML = '<div class="empty-tip" style="grid-column:1/-1;">' + tip + '</div>';
     return;
   }
   grid.innerHTML = list.map(function(t){
@@ -684,12 +929,35 @@ function renderTopicGrid(){
       var line = i < NODES.length - 1 ? '<span class="tl-line '+(i < t.node ? 'done' : '')+'"></span>' : '';
       return dot + line;
     }).join('');
+    var warnHtml = '';
+    if(warnMap[t.id]){
+      warnHtml = '<span class="warn-badge" onclick="event.stopPropagation()">'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3L2 20h20L12 3zM12 10v4M12 17.5v.5"/></svg>'
+        + '<span class="warn-tip">' + warnMap[t.id].map(function(r){ return esc(r); }).join('<br>') + '</span>'
+        + '</span>';
+    }
+    /* 当前节点未完成 to-do 的注意按钮 */
+    var nodePend = currentNodePending(t);
+    var noteHtml = '';
+    if(nodePend.length){
+      noteHtml = '<span class="note-badge" onclick="event.stopPropagation()">'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M10.3 21a2 2 0 0 0 3.4 0"/></svg>'
+        + '<span class="note-tip">当前节点待完成 to-do：<br>'
+        + nodePend.map(function(d){ return '· '+esc(d.detail)+'（'+esc(d.dueDate.slice(5))+'）'; }).join('<br>')
+        + '</span></span>';
+    }
+    /* 推进节点按钮：末节点（已出版）置灰；整卡点击编辑已移除，仅按钮可进编辑 */
+    var advanceBtn = t.node < NODES.length - 1
+      ? '<button class="btn text" onclick="event.stopPropagation();advanceNode(\''+t.id+'\')">推进节点</button>'
+      : '<button class="btn text" disabled>推进节点</button>';
     return '<div class="topic-card">'
-      + '<div class="t-head"><div class="t-title">'+esc(t.title)+'</div>'
+      + '<div class="t-head"><div class="t-title">'+esc(t.title)+'</div>'+warnHtml
+      + '<span class="t-spacer"></span>'
       + '<button class="dots-btn" onclick="toggleCardMenu(event,\''+t.id+'\')" title="更多操作">'
       + '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>'
       + '</button></div>'
-      + '<div class="card-menu" id="cmenu-'+t.id+'">'
+      + '<div class="card-menu" id="cmenu-'+t.id+'" onclick="event.stopPropagation()">'
+      + '<button onclick="openTopicTodos(\''+t.id+'\')">关联to-do（'+topicTodos(t.id).length+'）</button>'
       + '<button onclick="openReminders(\''+t.id+'\')">提醒记录（'+t.reminders.length+'）</button>'
       + '<button class="danger" onclick="deleteTopic(\''+t.id+'\')">删除选题</button>'
       + '</div>'
@@ -702,9 +970,10 @@ function renderTopicGrid(){
       + '<div class="r-two">最新提醒：'+(lastReminder?esc(lastReminder.text):'')+'</div>'
       + '</div>'
       + '<div class="tl-wrap"><div class="tl">'+tl+'</div>'
-      + '<div class="tl-cur">当前节点：<b>'+NODES[t.node]+'</b></div></div>'
+      + '<div class="tl-cur">当前节点：<b>'+NODES[t.node]+'</b>'+noteHtml+'</div></div>'
       + '<div class="topic-actions">'
-      + '<button class="btn text" onclick="openTopicModal(\''+t.id+'\')">编辑详情</button>'
+      + advanceBtn
+      + '<button class="btn text" onclick="event.stopPropagation();openTopicModal(\''+t.id+'\')">编辑详情</button>'
       + '</div></div>';
   }).join('');
 }
@@ -734,6 +1003,37 @@ function deleteTopic(id){
   toast('已删除');
 }
 
+/* ---------- 推进节点 ---------- */
+/* 推进到下一节点：当前节点有未完成 to-do 时先弹提醒，否则直接推进 */
+function advanceNode(id){
+  var t = findTopic(id);
+  if(!t || t.node >= NODES.length - 1) return;
+  var pend = currentNodePending(t);
+  if(pend.length){
+    document.getElementById('modalRoot').innerHTML =
+      '<div class="modal-mask show"><div class="modal">'
+      + '<div class="modal-head"><h3>推进节点</h3>'
+      + '<button class="modal-close" onclick="closeModal()" title="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>'
+      + '<div class="modal-body">原节点「'+NODES[t.node]+'」还有 <b style="color:var(--red)">'+pend.length+'</b> 条未完成 to-do。</div>'
+      + '<div class="modal-actions">'
+      + '<button class="btn" onclick="openTopicTodos(\''+t.id+'\')">去查看</button>'
+      + '<button class="btn primary" onclick="doAdvanceNode(\''+t.id+'\')">知道了</button>'
+      + '</div></div></div>';
+    return;
+  }
+  doAdvanceNode(id);
+}
+function doAdvanceNode(id){
+  var t = findTopic(id);
+  if(!t || t.node >= NODES.length - 1) return;
+  t.node += 1;
+  if(!t.nodeDates[t.node]) t.nodeDates[t.node] = todayStr();
+  saveTopics();
+  closeModal();
+  refreshAll();
+  toast('已推进至「'+NODES[t.node]+'」');
+}
+
 /* ---------- 新建 / 编辑选题弹窗 ---------- */
 function openTopicModal(id){
   var t = id ? findTopic(id) : newTopic({});
@@ -755,9 +1055,11 @@ function openTopicModal(id){
   var schoolRows = t.schoolSales.map(function(s,i){
     return schoolRowHtml(i, s.name, s.copies);
   }).join('');
-  var html = '<div class="modal-mask show" id="topicMask" onclick="if(event.target===this)closeModal()">'
+  var html = '<div class="modal-mask show" id="topicMask">'
     + '<div class="modal">'
-    + '<h3>'+(isNew?'新建选题':'编辑选题')+'</h3>'
+    + '<div class="modal-head"><h3>'+(isNew?'新建选题':'编辑选题')+'</h3>'
+    + '<button class="modal-close" onclick="closeTopicModal()" title="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>'
+    + '<div class="modal-body">'
     + '<input type="hidden" id="f_id" value="'+(isNew?'':t.id)+'">'
     + '<div class="form-grid">'
     + '<div class="f-field"><label>书名 <span class="req">*</span></label><input id="f_title" value="'+esc(t.title)+'"></div>'
@@ -779,12 +1081,12 @@ function openTopicModal(id){
     + '<div class="f-field full"><label>院校流向（院校名称 + 册数）</label>'
     + '<div class="sub-list" id="schoolSalesList">'+schoolRows+'</div>'
     + '<button type="button" class="btn text" onclick="addSchoolRow()">+ 添加院校</button></div>'
-    + '</div>'
+    + '</div></div>'
     + '<div class="modal-actions">'
-    + '<button class="btn" onclick="closeModal()">取消</button>'
     + '<button class="btn primary" onclick="saveTopicForm()">保存</button>'
     + '</div></div></div>';
   document.getElementById('modalRoot').innerHTML = html;
+  state._topicSnap = snapModalForm(); /* 打开时快照，供「未保存关闭」检测 */
 }
 function salesRowHtml(i, year, copies, amount){
   return '<div class="sub-item">'
@@ -864,14 +1166,445 @@ function openReminders(id){
     return '<div class="reminder-item"><div class="r-head"><span>节点：'+NODES[r.node]+'</span><span>'+esc(r.date)+'</span></div>'+esc(r.text)+'</div>';
   }).join('');
   document.getElementById('modalRoot').innerHTML =
-    '<div class="modal-mask show" onclick="if(event.target===this)closeModal()"><div class="modal">'
-    + '<h3>《'+esc(t.title)+'》提醒记录</h3>'
+    '<div class="modal-mask show"><div class="modal">'
+    + '<div class="modal-head"><h3>《'+esc(t.title)+'》提醒记录</h3>'
+    + '<button class="modal-close" onclick="closeModal()" title="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>'
+    + '<div class="modal-body">'
     + (items || '<div class="empty-tip">暂无提醒记录</div>')
-    + '<div class="modal-actions"><button class="btn" onclick="closeModal()">关闭</button></div>'
+    + '</div>'
     + '</div></div>';
 }
+/* 弹窗表单快照：汇总弹窗内全部输入框/下拉/文本域的值（含动态行），供「未保存关闭」检测 */
+function snapModalForm(){
+  var vals = [];
+  document.querySelectorAll('.modal-body input, .modal-body select, .modal-body textarea').forEach(function(el){
+    vals.push(el.value);
+  });
+  return vals.join('');
+}
+/* 未保存关闭守卫：快照有变化先确认，放弃修改才关闭 */
+function closeGuarded(snapKey){
+  var snap = state[snapKey];
+  if((snap || snap === '') && snapModalForm() !== snap){
+    if(!confirm('当前内容尚未保存，确认关闭？修改将丢失。')) return;
+  }
+  state[snapKey] = null;
+  closeModal();
+}
+function closeTopicModal(){ closeGuarded('_topicSnap'); }
+function closeTodoModal(){ closeGuarded('_todoSnap'); }
 function closeModal(){
+  state._todoReturn = null; /* 取消/关闭时清掉回跳标记，避免残留影响下一次保存 */
   document.getElementById('modalRoot').innerHTML = '';
+}
+
+/* ==================== 每日to-do ==================== */
+var RMK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
+var DOW_LABEL = ['周一','周二','周三','周四','周五','周六','周日'];
+
+/* ---------- 纯逻辑（可测试） ---------- */
+function dateStrOf(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+/* 当前视图的锚点日期：今天 + 该视图的周期偏移 */
+function todoAnchor(){
+  var off = state.todoNav[state.todoView] || 0;
+  var d = new Date();
+  if(state.todoView === 'day') d.setDate(d.getDate()+off);
+  else if(state.todoView === 'week') d.setDate(d.getDate()+off*7);
+  else d = new Date(d.getFullYear(), d.getMonth()+off, 1);
+  return d;
+}
+function navTodo(dir){ state.todoNav[state.todoView] += dir; renderTodoPage(); }
+/* 一键回到今天：当前视图周期偏移清零 */
+function navTodoToday(){ state.todoNav[state.todoView] = 0; renderTodoPage(); }
+function fmtMD(ds){ return parseInt(ds.slice(5,7))+'月'+parseInt(ds.slice(8,10))+'日'; }
+function todoPeriodLabel(){
+  var a = todoAnchor();
+  if(state.todoView === 'day') return fmtMD(dateStrOf(a))+' '+DOW_LABEL[(a.getDay()+6)%7];
+  if(state.todoView === 'week'){ var ws = weekDates(a); return fmtMD(ws[0])+' - '+fmtMD(ws[6]); }
+  return a.getFullYear()+'年'+(a.getMonth()+1)+'月';
+}
+function weekDates(anchor){
+  var now = anchor || new Date();
+  var dow = (now.getDay()+6)%7;
+  var mon = new Date(now); mon.setDate(now.getDate()-dow);
+  var arr = [];
+  for(var i=0;i<7;i++){
+    var d = new Date(mon); d.setDate(mon.getDate()+i);
+    arr.push(dateStrOf(d));
+  }
+  return arr;
+}
+function monthCells(anchor){
+  var a = anchor || new Date();
+  var t = todayStr();
+  var y = a.getFullYear(), m = a.getMonth()+1;
+  var lead = (new Date(y, m-1, 1).getDay()+6)%7;
+  var days = new Date(y, m, 0).getDate();
+  var cells = [];
+  for(var i=0;i<lead;i++) cells.push(null);
+  for(var d=1;d<=days;d++){
+    var ds = y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    cells.push({date:ds, rel: ds<t?'past':(ds===t?'today':'future')});
+  }
+  return cells;
+}
+function findTodo(id){
+  for(var i=0;i<state.todos.length;i++) if(state.todos[i].id===id) return state.todos[i];
+  return null;
+}
+function cmpTodo(a,b){
+  if(a.dueTime && b.dueTime) return a.dueTime < b.dueTime ? -1 : 1;
+  if(a.dueTime) return -1;
+  if(b.dueTime) return 1;
+  return (a.createdAt||'') < (b.createdAt||'') ? -1 : 1;
+}
+function cmpDoneAtDesc(a,b){ return (a.doneAt||'') > (b.doneAt||'') ? -1 : 1; }
+function overdueTodos(){
+  var t = todayStr();
+  return state.todos.filter(function(d){ return !d.done && d.dueDate < t; });
+}
+/* 某日任务分桶：
+   - 锚点为今天：历史逾期（未完成）红色置顶，今日待办居中，今日已完成置底
+   - 锚点为过去：当日未完成按逾期样式展示（逾期留在各自日期），当日已完成置底
+   - 锚点为未来：仅当日任务 */
+function dayBuckets(dateStr){
+  var t = todayStr();
+  var od = [], pend = [], done = [];
+  state.todos.forEach(function(d){
+    if(dateStr === t){
+      if(d.dueDate < t && !d.done) od.push(d);
+      else if(d.dueDate === t){ d.done ? done.push(d) : pend.push(d); }
+    }else{
+      if(d.dueDate !== dateStr) return;
+      if(d.done) done.push(d);
+      else if(dateStr < t) od.push(d);
+      else pend.push(d);
+    }
+  });
+  od.sort(function(a,b){ return a.dueDate===b.dueDate ? cmpTodo(a,b) : (a.dueDate<b.dueDate?-1:1); });
+  pend.sort(cmpTodo);
+  done.sort(cmpDoneAtDesc);
+  return {overdue:od, pending:pend, done:done};
+}
+/* 统计口径跟随当前视图锚点周期 */
+function todoPeriodSet(){
+  var v = state.todoView, a = dateStrOf(todoAnchor());
+  if(v === 'day') return state.todos.filter(function(d){ return d.dueDate === a; });
+  if(v === 'week'){
+    var ws = weekDates(todoAnchor());
+    return state.todos.filter(function(d){ return d.dueDate >= ws[0] && d.dueDate <= ws[6]; });
+  }
+  var m = a.slice(0,7);
+  return state.todos.filter(function(d){ return d.dueDate.slice(0,7) === m; });
+}
+function nodeOptionsFor(topic){
+  var opts = [];
+  if(!topic) return opts;
+  for(var i=topic.node;i<NODES.length;i++) opts.push(i);
+  return opts;
+}
+function topicTodos(tid){
+  return state.todos.filter(function(d){ return d.topicId === tid; });
+}
+function currentNodePending(topic){
+  return state.todos.filter(function(d){ return d.topicId===topic.id && d.node===topic.node && !d.done; });
+}
+
+/* ---------- 渲染 ---------- */
+/* 完成率小圆环：44px，与数字同卡并置，紫色=品牌色 */
+function ringSvgTodo(pct){
+  if(pct === null) return '<svg width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="#eee9f6" stroke-width="5"/></svg>';
+  var c = (2*Math.PI*18).toFixed(2), off = (c*(1-pct/100)).toFixed(2);
+  return '<svg width="44" height="44" viewBox="0 0 44 44">'
+    + '<circle cx="22" cy="22" r="18" fill="none" stroke="#eee9f6" stroke-width="5"/>'
+    + '<circle cx="22" cy="22" r="18" fill="none" stroke="#7851a9" stroke-width="5" stroke-linecap="round" stroke-dasharray="'+c+'" stroke-dashoffset="'+off+'" transform="rotate(-90 22 22)"/></svg>';
+}
+function renderTodoPage(){
+  if(!document.getElementById('todoTabs')) return;
+  renderTodoTabs();
+  renderTodoStats();
+  var box = document.getElementById('todoDetail');
+  if(state.todoView === 'day') renderDayView(box);
+  else if(state.todoView === 'week') renderWeekView(box);
+  else renderMonthView(box);
+  renderTodoNav(); /* ‹ › 组件在卡片头内，视图渲染后再同步标签 */
+}
+/* 日/周/月：胶囊式 segmented control */
+function renderTodoTabs(){
+  var views = [['day','日'],['week','周'],['month','月']];
+  document.getElementById('todoTabs').innerHTML = views.map(function(v){
+    return '<button class="'+(state.todoView===v[0]?'active':'')+'" onclick="setTodoView(\''+v[0]+'\')">'+v[1]+'</button>';
+  }).join('');
+}
+function renderTodoNav(){
+  document.getElementById('todoPeriodLabel').textContent = todoPeriodLabel();
+}
+/* ‹ 今天 › 翻页组件：偏移为0（正在看当前周期）时「今天」置灰 */
+function pnavHtml(){
+  var off = state.todoNav[state.todoView] || 0;
+  return '<div class="pnav">'
+    + '<button onclick="navTodo(-1)" title="上一周期">&#8249;</button>'
+    + '<button class="pnav-today" onclick="navTodoToday()" title="回到今天"'+(off===0?' disabled':'')+'>今天</button>'
+    + '<span class="pnav-label" id="todoPeriodLabel"></span>'
+    + '<button onclick="navTodo(1)" title="下一周期">&#8250;</button>'
+    + '</div>';
+}
+function setTodoView(v){ state.todoView = v; renderTodoPage(); }
+/* 四列横排统计卡：数字22px主视觉，标签缩小置灰；逾期为全局口径 */
+function renderTodoStats(){
+  var set = todoPeriodSet();
+  var created = set.length;
+  var done = set.filter(function(d){ return d.done; }).length;
+  var od = overdueTodos().length;
+  var pct = created ? Math.round(done/created*100) : null;
+  document.getElementById('todoStats').innerHTML =
+    '<div class="tstat"><div class="tstat-lbl">创建任务</div><div class="tstat-num">'+created+'</div></div>'
+    + '<div class="tstat"><div class="tstat-lbl">已完成</div><div class="tstat-num" style="color:var(--green)">'+done+'</div></div>'
+    + '<div class="tstat"><div class="tstat-lbl">已逾期</div><div class="tstat-num"'+(od>0?' style="color:var(--red)"':'')+'>'+od+'</div></div>'
+    + '<div class="tstat tstat-rate"><div><div class="tstat-lbl">完成率</div>'
+    + '<div class="tstat-num" style="color:var(--line)">'+(pct===null?'-':pct+'%')+'</div></div>'
+    + ringSvgTodo(pct)+'</div>';
+}
+function todoRowHtml(d, extraCls){
+  var cls = 'todo-item'+(d.done?' done':'')+(extraCls||'');
+  var tag = d.tag ? '<span class="todo-tag">'+esc(d.tag)+'</span>' : '';
+  var node = (d.node===0||d.node) ? '<span class="todo-node">'+NODES[d.node]+'</span>' : '';
+  var time = d.dueTime ? '<span class="todo-time">'+esc(d.dueTime)+'</span>' : '';
+  var rmk = d.remark
+    ? '<span class="rmk-badge has">'+RMK_SVG+'<span class="rmk-tip">'+esc(d.remark)+'</span></span>'
+    : '<span class="rmk-badge">'+RMK_SVG+'</span>';
+  return '<div class="'+cls+'" onclick="openTodoModal(\''+d.id+'\')">'
+    + '<input type="checkbox" class="todo-check"'+(d.done?' checked':'')+' onclick="event.stopPropagation();toggleTodo(\''+d.id+'\')">'
+    + tag + node
+    + '<span class="todo-detail" title="'+esc(d.detail)+'">'+esc(d.detail)+'</span>'
+    + time + rmk
+    + '</div>';
+}
+function renderDayView(box){
+  var a = dateStrOf(todoAnchor());
+  var b = dayBuckets(a);
+  /* 周期显示统一由左上角 ‹ › 翻页组件承担，卡片头不再重复 */
+  var html = '<div class="td-head"><h3>任务列表</h3>' + pnavHtml() + '</div>';
+  if(b.overdue.length){
+    html += '<div class="td-sec red">逾期任务（'+b.overdue.length+'）</div>'
+      + b.overdue.map(function(d){ return todoRowHtml(d, ' overdue'); }).join('');
+  }
+  html += '<div class="td-sec cyan">待办任务（'+b.pending.length+'）</div>';
+  html += b.pending.length
+    ? b.pending.map(function(d){ return todoRowHtml(d); }).join('')
+    : '<div class="muted" style="padding:6px 8px;">暂无待办任务</div>';
+  if(b.done.length){
+    html += '<div class="td-sec green">已完成（'+b.done.length+'）</div>'
+      + b.done.map(function(d){ return todoRowHtml(d); }).join('');
+  }
+  box.innerHTML = html;
+}
+function renderWeekView(box){
+  var ws = weekDates(todoAnchor()), today = todayStr();
+  var html = '<div class="td-head"><h3>任务列表</h3>' + pnavHtml() + '</div>';
+  html += '<div class="wk-grid">';
+  ws.forEach(function(ds, i){
+    var items = state.todos.filter(function(d){ return d.dueDate === ds; });
+    var pend = items.filter(function(d){ return !d.done; }).sort(cmpTodo);
+    var done = items.filter(function(d){ return d.done; }).sort(cmpDoneAtDesc);
+    html += '<div class="wk-col'+(ds===today?' today':'')+'">'
+      + '<div class="wk-dhead">'+DOW_LABEL[i]+'<b>'+parseInt(ds.slice(5,7))+'/'+parseInt(ds.slice(8,10))+'</b></div>';
+    pend.forEach(function(d){
+      /* 逾期任务只显示在其原截止日期那一格（红色）；状态框：未完成=青框、逾期=红框 */
+      html += '<div class="wk-todo'+(ds<today?' overdue':'')+'" title="'+esc(d.detail)+'" onclick="openTodoModal(\''+d.id+'\')"><span class="wk-st"></span><span class="wk-txt">'+esc(d.detail)+'</span></div>';
+    });
+    done.forEach(function(d){
+      html += '<div class="wk-todo done" title="'+esc(d.detail)+'" onclick="openTodoModal(\''+d.id+'\')"><span class="wk-st"></span><span class="wk-txt">'+esc(d.detail)+'</span></div>';
+    });
+    /* 栏底新建按钮：以该栏日期预填截止日期 */
+    html += '<div class="wk-add" title="在该日期新建to-do" onclick="openTodoModal(null,{dueDate:\''+ds+'\'})">＋ 新建</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  box.innerHTML = html;
+}
+var CAL_MAX_TASKS = 2; /* 月视图每格最多显示任务条数（每条最多两行），超出折叠为「还有 n 项 ›」，阈值可调 */
+/* 月历任务条：状态框+详情（最多两行省略）；逾期=红框红字、未完成=青框、已完成=绿底白勾 */
+function calTodoHtml(d, today){
+  var cls = 'cal-todo' + (d.done ? ' done' : (d.dueDate < today ? ' overdue' : ''));
+  return '<div class="'+cls+'" title="'+esc(d.detail)+'" onclick="event.stopPropagation();openTodoModal(\''+d.id+'\')">'
+    + '<span class="wk-st"></span><span class="cal-txt">'+esc(d.detail)+'</span></div>';
+}
+/* 「还有 n 项 ›」点击跳到日视图对应日期 */
+function gotoDay(ds){
+  var t = todayStr();
+  var diff = Math.round((new Date(ds+'T00:00:00') - new Date(t+'T00:00:00'))/86400000);
+  state.todoNav.day = diff;
+  state.todoView = 'day';
+  renderTodoPage();
+}
+function renderMonthView(box){
+  var today = todayStr();
+  var cells = monthCells(todoAnchor());
+  var DOWH = ['一','二','三','四','五','六','日'];
+  var html = '<div class="td-head"><h3>任务列表</h3>' + pnavHtml() + '</div>';
+  html += '<div class="cal-dow-row">' + DOWH.map(function(w){ return '<div class="cal-dow">'+w+'</div>'; }).join('') + '</div>';
+  html += '<div class="cal-grid">';
+  var firstIdx = -1;
+  for(var fi=0; fi<cells.length; fi++){ if(cells[fi]){ firstIdx = fi; break; } }
+  cells.forEach(function(c, idx){
+    /* 月初前置空白格不再渲染（消灭空行），首个日期格用 grid-column-start 对齐到正确星期 */
+    if(!c) return;
+    var colStyle = (idx === firstIdx && idx > 0) ? ' style="grid-column-start:'+(idx+1)+'"' : '';
+    var items = state.todos.filter(function(d){ return d.dueDate === c.date; });
+    var pend = items.filter(function(d){ return !d.done; }).sort(cmpTodo);
+    var done = items.filter(function(d){ return d.done; }).sort(cmpDoneAtDesc);
+    /* 所有日期格统一显示 to-do 详情（参考周视图形式），未完成在前、已完成置底 */
+    var list = pend.concat(done);
+    html += '<div class="cal-cell '+c.rel+'"'+colStyle+'><div class="cal-date">'+parseInt(c.date.slice(8,10))
+      + '<button class="cal-add" title="在该日期新建to-do" onclick="event.stopPropagation();openTodoModal(null,{dueDate:\''+c.date+'\'})">＋</button></div>';
+    list.slice(0, CAL_MAX_TASKS).forEach(function(d){
+      html += calTodoHtml(d, today);
+    });
+    if(list.length > CAL_MAX_TASKS){
+      html += '<div class="cal-more" onclick="gotoDay(\''+c.date+'\')">还有 '+(list.length-CAL_MAX_TASKS)+' 项 &#8250;</div>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+  box.innerHTML = html;
+}
+
+/* ---------- 创建 / 编辑弹窗 ---------- */
+/* id=编辑已有；preset=新建时预填（dueDate/topicId/node 等，由周/月格子或选题关联弹窗传入） */
+function openTodoModal(id, preset){
+  var d = id ? findTodo(id) : newTodo(preset||{});
+  if(!d) return;
+  var isNew = !id;
+  var topicOpts = '<option value="">无</option>' + state.topics.map(function(t){
+    return '<option value="'+t.id+'"'+(d.topicId===t.id?' selected':'')+'>'+esc(t.title)+'</option>';
+  }).join('');
+  document.getElementById('modalRoot').innerHTML =
+    '<div class="modal-mask show"><div class="modal">'
+    + '<div class="modal-head"><h3>'+(isNew?'创建to-do':'编辑to-do')+'</h3>'
+    + '<button class="modal-close" onclick="closeTodoModal()" title="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>'
+    + '<div class="modal-body"><div class="form-grid">'
+    + '<div class="f-field full"><label>任务详情（20字以内）<span class="req">*</span></label>'
+    + '<input id="td_detail" maxlength="20" value="'+esc(d.detail)+'" placeholder="要做什么"></div>'
+    + '<div class="f-field full"><label>任务备注（20字以内）</label>'
+    + '<input id="td_remark" maxlength="20" value="'+esc(d.remark)+'" placeholder="补充说明，可留空"></div>'
+    + '<div class="f-field"><label>截止日期<span class="req">*</span></label><input type="date" id="td_dueDate" value="'+esc(d.dueDate)+'"></div>'
+    + '<div class="f-field"><label>截止时间</label><input type="time" id="td_dueTime" value="'+esc(d.dueTime)+'"></div>'
+    + '<div class="f-field"><label>关联选题</label><select id="td_topic" onchange="onTodoTopicChange()">'+topicOpts+'</select></div>'
+    + '<div class="f-field"><label>选题标签（6字以内）</label><input id="td_tag" maxlength="6" value="'+esc(d.tag)+'" placeholder="如：重点书"></div>'
+    + '<div class="f-field full"><label>关联节点（该选题当前及之后的节点）</label><select id="td_node"></select></div>'
+    + '</div></div>'
+    + '<div class="modal-actions">'
+    + (isNew?'':'<button class="btn danger" onclick="deleteTodo(\''+d.id+'\')">删除</button>')
+    + '<button class="btn primary" onclick="saveTodoForm(\''+(isNew?'':d.id)+'\')">保存</button>'
+    + '</div></div></div>';
+  fillTodoNodeOptions(d.node);
+  state._todoSnap = snapModalForm(); /* 打开时快照，供「未保存关闭」检测 */
+}
+function onTodoTopicChange(){ fillTodoNodeOptions(null); }
+function fillTodoNodeOptions(selected){
+  var sel = document.getElementById('td_node');
+  var topic = findTopic(document.getElementById('td_topic').value);
+  if(!topic){
+    sel.innerHTML = '<option value="">（请先选择关联选题）</option>';
+    sel.disabled = true;
+    return;
+  }
+  sel.disabled = false;
+  var opts = '<option value="">无</option>';
+  nodeOptionsFor(topic).forEach(function(i){
+    opts += '<option value="'+i+'"'+(selected===i?' selected':'')+'>'+NODES[i]+'</option>';
+  });
+  sel.innerHTML = opts;
+}
+function saveTodoForm(id){
+  var detail = document.getElementById('td_detail').value.trim();
+  var dueDate = document.getElementById('td_dueDate').value;
+  if(!detail){ toast('请填写任务详情'); return; }
+  if(!dueDate){ toast('请选择截止日期'); return; }
+  var d = id ? findTodo(id) : newTodo({});
+  if(!d) return;
+  d.detail = detail.slice(0,20);
+  d.remark = document.getElementById('td_remark').value.trim().slice(0,20);
+  d.dueDate = dueDate;
+  d.dueTime = document.getElementById('td_dueTime').value;
+  d.topicId = document.getElementById('td_topic').value;
+  d.tag = document.getElementById('td_tag').value.trim().slice(0,6);
+  var nv = document.getElementById('td_node').value;
+  d.node = nv === '' ? null : parseInt(nv);
+  if(!id) state.todos.push(d);
+  saveTodos();
+  /* 从关联to-do弹窗进入的，保存后返回该弹窗 */
+  var ret = state._todoReturn; state._todoReturn = null;
+  if(ret){ openTopicTodos(ret); } else { closeModal(); }
+  renderTodoPage();
+  renderTopicGrid();
+  toast('已保存');
+}
+function deleteTodo(id){
+  var d = findTodo(id);
+  if(!d) return;
+  if(!confirm('确认删除该 to-do「'+d.detail+'」？')) return;
+  state.todos = state.todos.filter(function(x){ return x.id!==id; });
+  saveTodos();
+  var ret = state._todoReturn; state._todoReturn = null;
+  if(ret){ openTopicTodos(ret); } else { closeModal(); }
+  renderTodoPage();
+  renderTopicGrid();
+  toast('已删除');
+}
+function toggleTodo(id){
+  var d = findTodo(id);
+  if(!d) return;
+  d.done = !d.done;
+  d.doneAt = d.done ? new Date().toISOString() : null;
+  saveTodos();
+  renderTodoPage();
+  renderTopicGrid();
+}
+
+/* ---------- 选题关联to-do ---------- */
+function openTopicTodos(id){
+  var t = findTopic(id);
+  if(!t) return;
+  var list = topicTodos(id);
+  var pend = list.filter(function(d){ return !d.done; }).sort(function(a,b){
+    return a.dueDate===b.dueDate ? cmpTodo(a,b) : (a.dueDate<b.dueDate?-1:1);
+  });
+  var done = list.filter(function(d){ return d.done; }).sort(cmpDoneAtDesc);
+  var rows = pend.concat(done).map(function(d){
+    var node = (d.node===0||d.node) ? '<span class="todo-node">'+NODES[d.node]+'</span>' : '';
+    return '<div class="todo-rel-item'+(d.done?' done':'')+'" onclick="openTodoModalFromRel(\''+d.id+'\',\''+id+'\')">'
+      + '<input type="checkbox" class="todo-check"'+(d.done?' checked':'')+' title="标记完成/取消完成" onclick="event.stopPropagation();toggleTodoRel(\''+d.id+'\',\''+id+'\')">'
+      + node
+      + '<span class="todo-detail tip-wrap">'+esc(d.detail)+'<span class="tip-box">'+esc(d.detail)+'</span></span>'
+      + '<span class="rel-date">'+esc(d.dueDate)+'</span>'
+      + '</div>';
+  }).join('');
+  document.getElementById('modalRoot').innerHTML =
+    '<div class="modal-mask show"><div class="modal">'
+    + '<div class="modal-head"><h3>《'+esc(t.title)+'》关联to-do（'+list.length+'）</h3>'
+    + '<button class="modal-close" onclick="closeModal()" title="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>'
+    + '<div class="modal-body">'
+    + (rows || '<div class="empty-tip">暂无关联 to-do，点击下方「创建to-do」新建，默认关联该选题当前节点。</div>')
+    + '</div>'
+    + '<div class="modal-actions">'
+    + '<button class="btn primary" onclick="openTodoModalFromRel(null,\''+t.id+'\')">创建to-do</button>'
+    + '</div></div></div>';
+}
+/* 从关联to-do弹窗进入创建/编辑：记录来源，保存/删除后返回该弹窗 */
+function openTodoModalFromRel(todoId, topicId){
+  state._todoReturn = topicId;
+  if(todoId){ openTodoModal(todoId); return; }
+  var t = findTopic(topicId);
+  openTodoModal(null, {topicId: topicId, node: t ? t.node : null});
+}
+/* 关联to-do弹窗内勾选完成态：切换后重绘弹窗与看板 */
+function toggleTodoRel(todoId, topicId){
+  toggleTodo(todoId);
+  openTopicTodos(topicId);
 }
 
 /* ==================== 个人档案 ==================== */
@@ -885,13 +1618,15 @@ function renderProfile(){
 function openProfileModal(){
   var p = state.profile;
   document.getElementById('modalRoot').innerHTML =
-    '<div class="modal-mask show" onclick="if(event.target===this)closeModal()"><div class="modal">'
-    + '<h3>编辑个人档案</h3>'
+    '<div class="modal-mask show"><div class="modal">'
+    + '<div class="modal-head"><h3>编辑个人档案</h3>'
+    + '<button class="modal-close" onclick="closeModal()" title="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>'
+    + '<div class="modal-body">'
     + '<div class="form-grid">'
     + '<div class="f-field"><label>姓名</label><input id="p_name" value="'+esc(p.name)+'"></div>'
     + '<div class="f-field"><label>工龄（年）</label><input type="number" min="0" id="p_years" value="'+esc(p.years)+'"></div>'
     + '<div class="f-field full"><label>职称</label><input id="p_title" value="'+esc(p.title)+'" placeholder="如：编辑 / 副编审 / 编审"></div>'
-    + '</div>'
+    + '</div></div>'
     + '<div class="modal-actions">'
     + '<button class="btn" onclick="closeModal()">取消</button>'
     + '<button class="btn primary" onclick="saveProfileForm()">保存</button>'
@@ -910,11 +1645,15 @@ function saveProfileForm(){
 }
 
 /* ==================== 数据备份 ==================== */
+/* 备份数据结构版本号：v1=无版本号的早期备份；v2=当前结构。导入时据此校验与迁移 */
+var SCHEMA_VERSION = 2;
 function exportJSON(){
   var data = {
+    schemaVersion: SCHEMA_VERSION,
     topics: state.topics,
     plans: state.plans,
     profile: state.profile,
+    todos: state.todos,
     exportedAt: todayStr()
   };
   var blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
@@ -933,13 +1672,21 @@ function importJSON(ev){
     try{
       var data = JSON.parse(reader.result);
       if(!data.topics || !Array.isArray(data.topics)) throw new Error('bad');
+      /* 版本校验：无版本号视为 v1；高于当前系统版本拒绝导入，避免新结构被旧系统读坏 */
+      var ver = data.schemaVersion || 1;
+      if(ver > SCHEMA_VERSION){
+        toast('备份文件版本（v'+ver+'）高于当前系统（v'+SCHEMA_VERSION+'），请使用新版系统导入');
+        return;
+      }
       if(!confirm('导入将覆盖当前全部数据（'+state.topics.length+' 条选题 → '+data.topics.length+' 条），确认继续？建议先导出备份。')){
         return;
       }
-      state.topics = data.topics;
-      state.plans = data.plans || {};
-      state.profile = data.profile || {name:'',years:'',title:''};
-      saveTopics(); savePlans(); saveProfile();
+      var migrated = migrateBackup(data, ver);
+      state.topics = migrated.topics;
+      state.plans = migrated.plans;
+      state.profile = migrated.profile;
+      state.todos = migrated.todos;
+      saveTopics(); savePlans(); saveProfile(); saveTodos();
       initPeriodSelects();
       refreshAll();
       toast('导入成功');
@@ -950,11 +1697,23 @@ function importJSON(ev){
   reader.readAsText(file);
   ev.target.value = '';
 }
+/* 备份迁移：缺失字段以新对象默认值补齐（id 等已有字段保留），未来版本演进在此逐版升级 */
+function migrateBackup(data, ver){
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    topics: (data.topics||[]).map(function(t){ return Object.assign(newTopic({}), t); }),
+    plans: data.plans || {},
+    profile: data.profile || {name:'',years:'',title:''},
+    todos: (data.todos||[]).map(function(d){ return Object.assign(newTodo({}), d); })
+  };
+}
 function clearAllData(){
-  if(!confirm('确认清空全部选题数据？此操作不可恢复，建议先导出备份。')) return;
-  if(!confirm('再次确认：清空后所有选题将被永久删除，是否继续？')) return;
+  if(!confirm('确认清空全部数据（选题 + to-do）？此操作不可恢复，建议先导出备份。')) return;
+  if(!confirm('再次确认：清空后所有选题与 to-do 将被永久删除，是否继续？')) return;
   state.topics = [];
+  state.todos = [];
   saveTopics();
+  saveTodos();
   initPeriodSelects();
   refreshAll();
   toast('已清空全部数据');
