@@ -4,7 +4,7 @@
   "description": "编辑工作追踪系统",
   "main": "main.js",
   "author": "buke",
-  "license": "UNLICENSED",
+  "license": "GPL-3.0",
   "private": true,
   "scripts": {
     "start": "electron .",
