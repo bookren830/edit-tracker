@@ -40,15 +40,15 @@
 | 路径 | 说明 |
 | --- | --- |
 | `编辑工作追踪系统.html` | **系统本体**，唯一真源，所有迭代改这里（当前 1732 行 / 约 83 KB） |
-| `编辑工作追踪系统.exe` | 便携版桌面程序（74 MB，v2，Electron 打包） |
+| `编辑工作追踪系统.exe` | 便携版桌面程序（74 MB，v2.1，Electron 打包） |
 | `app/index.html` | 打包用副本，**必须与主 HTML 同步**后再打包 |
 | `app/main.js` | Electron 主进程入口 |
-| `app/package.json` | 打包配置（version 2.0.0，productName=EditTracker） |
+| `app/package.json` | 打包配置（version 2.1.0，productName=EditTracker） |
 | `app/dist/EditTracker-Portable.exe` | 打包中间产物 |
-| `tests/系统测试用例.js` | **自动化测试套件**（node 直接跑，131 项断言） |
-| `README.md` | 仓库说明（已更新到 v2） |
+| `tests/系统测试用例.js` | **自动化测试套件**（node 直接跑，172 项断言） |
+| `README.md` | 仓库说明（已更新到 v2.1） |
 | `.workbuddy/memory/*.md` | 逐日工作日志（**重要：含全部历史决策与踩坑记录**） |
-| `.workbuddy/push_v2.py` | GitHub 推送脚本（复用，令牌从环境变量读，不落盘） |
+| `.workbuddy/push_v21.py` | GitHub 推送脚本（最新为 v21；令牌从环境变量读，不落盘） |
 | GitHub 仓库 | https://github.com/bookren830/edit-tracker （公开，main 分支） |
 
 > ⚠️ `.gitignore` 已忽略：`node_modules/`、`app/dist/`、`*.exe`、`.workbuddy/`、`app/package-lock.json`。exe 和 workbuddy 日志不进仓库。
