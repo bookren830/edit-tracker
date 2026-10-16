@@ -420,6 +420,88 @@ closeTodoModal();
 eq(__els['modalRoot'].innerHTML, '', 'G7d to-do未保存确认→关闭');
 document.querySelectorAll = origQsa;
 
+/* ==================== H. 选题标签（周/月视图）与看板表格视图 ==================== */
+group('H. 选题标签与表格视图（2026-10-16）');
+
+/* H1 trunc 截断函数 */
+eq(trunc('一二三四五六七八九十', 10), '一二三四五六七八九十', 'H1a 恰好10字不截断');
+eq(trunc('一二三四五六七八九十一', 10), '一二三四五六七八九十…', 'H1b 超10字截断补省略号');
+eq(trunc('abc', 5), 'abc', 'H1c 不足不截');
+eq(trunc(null, 5), '', 'H1d null 安全');
+
+/* H2 topicTagHtml：有无关联 / 选题已删 */
+const _topicsBackup = state.topics;
+const ht = newTopic({
+  title: '国际贸易实务教程（第三版）', author: '张三', startDate: T,
+  topicNo: 'AB2026-00123', bookNo: '978-7-04-123456-7', school: '北京对外经济贸易大学'
+});
+ht.reminders = [{ date: T, text: '提醒：下周三前交二审修改稿，请跟进' }];
+state.topics = [ht];
+const tagTodo = newTodo({ detail: '整理引言', dueDate: T, topicId: ht.id });
+const noTagTodo = newTodo({ detail: '无关联任务', dueDate: T });
+ok(topicTagHtml(tagTodo).indexOf('国际贸易实务教') > -1, 'H2a 选题标签显示前6字');
+ok(topicTagHtml(tagTodo).indexOf('title="国际贸易实务教程（第三版）"') > -1, 'H2b hover 显示全称');
+eq(topicTagHtml(noTagTodo), '', 'H2c 无关联选题→无标签');
+eq(topicTagHtml(newTodo({ detail: 'x', dueDate: T, topicId: 'ghost-id' })), '', 'H2d 关联选题已被删→无标签');
+
+/* H3 周/月视图渲染含选题标签 */
+const _todosBackup = state.todos;
+state.todos = [tagTodo];
+renderWeekView(__els['todoDetail']);
+ok(__els['todoDetail'].innerHTML.indexOf('国际贸易实务教') > -1, 'H3a 周视图含选题标签');
+renderMonthView(__els['todoDetail']);
+ok(__els['todoDetail'].innerHTML.indexOf('国际贸易实务教') > -1, 'H3b 月视图含选题标签');
+state.todos = [];
+
+/* H4 视图切换 */
+eq(state.kanbanView, 'card', 'H4a 默认卡片视图');
+setKanbanView('table');
+eq(state.kanbanView, 'table', 'H4b 切换到表格视图');
+ok(__els['kanbanViewSeg'].innerHTML.indexOf('表格') > -1
+  && __els['kanbanViewSeg'].innerHTML.indexOf('active') > -1, 'H4c 视图胶囊渲染且有选中态');
+
+/* H5 表格视图：十列表头 */
+state.kanbanFilter = 'all';
+renderTopicGrid();
+const thtml = __els['topicGrid'].innerHTML;
+['序号','选题名','选题号','书号','作者','院校','当前节点','最新提醒','详情','其他'].forEach(function (h) {
+  ok(thtml.indexOf('<th>' + h + '</th>') > -1, 'H5 表头-' + h);
+});
+
+/* H6 序号从1开始 + 固定占位折叠 */
+ok(/<tr>\s*<td>1<\/td>/.test(thtml), 'H6a 序号从1开始');
+ok(thtml.indexOf('国际贸易实务教程（第…') > -1, 'H6b 选题名10字折叠');
+ok(thtml.indexOf('title="国际贸易实务教程（第三版）"') > -1, 'H6c 选题名 hover 全称');
+ok(thtml.indexOf('AB2026-00…') > -1, 'H6d 选题号9字折叠');
+ok(thtml.indexOf('978-7…') > -1, 'H6e 书号5字折叠');
+ok(thtml.indexOf('北京对外经济…') > -1, 'H6f 院校6字折叠');
+ok(thtml.indexOf('提醒：下周三前交二审…') > -1, 'H7a 最新提醒10字折叠');
+ok(thtml.indexOf('tip-box') > -1 && thtml.indexOf('提醒：下周三前交二审修改稿，请跟进') > -1, 'H7b 最新提醒 hover 全貌');
+
+/* H8 当前节点 to-do 提醒铃铛 */
+ok(thtml.indexOf('note-badge') === -1, 'H8a 无未完成 to-do 时不显示铃铛');
+state.todos = [newTodo({ detail: '催作者交稿', dueDate: T, topicId: ht.id, node: ht.node })];
+renderTopicGrid();
+const thtml2 = __els['topicGrid'].innerHTML;
+ok(thtml2.indexOf('note-badge') > -1, 'H8b 当前节点有未完成 to-do 显示铃铛');
+ok(thtml2.indexOf('note-tip') > -1 && thtml2.indexOf('催作者交稿') > -1, 'H8c 铃铛 hover 含 to-do 详情');
+state.todos = [];
+
+/* H9 详情列 + 其他列下拉 */
+ok(thtml.indexOf('>编辑</button>') > -1 && thtml.indexOf('openTopicModal') > -1, 'H9a 详情列编辑按钮');
+ok(thtml.indexOf('>关联to-do</button>') > -1, 'H9b 下拉含关联to-do');
+ok(thtml.indexOf('>提醒记录</button>') > -1, 'H9c 下拉含提醒记录');
+ok(thtml.indexOf('>删除选题</button>') > -1 && thtml.indexOf('deleteTopic') > -1, 'H9d 下拉含删除选题');
+ok(thtml.indexOf('toggleCardMenu') > -1, 'H9e 其他列「...」触发下拉');
+
+/* H10 切回卡片视图 + 还原现场 */
+setKanbanView('card');
+renderTopicGrid();
+ok(__els['topicGrid'].innerHTML.indexOf('topic-card') > -1, 'H10a 切回卡片视图渲染正常');
+ok(__els['topicGrid'].innerHTML.indexOf('国际贸易实务教程（第三版）') > -1, 'H10b 卡片视图选题名不折叠');
+state.topics = _topicsBackup;
+state.todos = _todosBackup;
+
 /* ==================== 汇总 ==================== */
 console.log('\n========================================');
 console.log('结果：PASS ' + PASS + ' / FAIL ' + FAIL);
