@@ -1,5 +1,7 @@
 # 编辑工作追踪系统
 
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 教材编辑个人工作追踪工具：每日 to-do（日/周/月三视图）、选题全流程（策划→营销 13 个节点）管理、工作成果看板、进度预警、个人档案。
 
 ## 文件说明
@@ -11,6 +13,7 @@
 | `app/main.js` | Electron 主进程入口 |
 | `app/package.json` | Electron 打包配置（electron-builder） |
 | `tests/系统测试用例.js` | 自动化测试（node 直接运行，172 项断言） |
+| `LICENSE` | GNU GPL v3.0 开源许可全文 |
 
 ## v2.1 更新记录（2026-10-16）
 
@@ -61,3 +64,11 @@ export ELECTRON_BUILDER_BINARIES_MIRROR="https://npmmirror.com/mirrors/electron-
 - 数据保存在本机浏览器 / exe 的 localStorage 中，不上传任何服务器
 - 浏览器版与 exe 版数据互相独立，可通过「个人档案 → 数据备份」导出 / 导入 JSON 迁移
 - 备份文件带 schemaVersion 版本号，旧版备份导入时自动迁移
+
+## 开源许可
+
+本项目以 **GNU GPL v3.0** 许可证开源，版权归 **任书征** 所有。
+
+- 你可以自由使用、修改、分发本项目，但若再分发（含修改后的版本），必须同样以 GPL v3.0 开源
+- 完整条款见 [LICENSE](LICENSE) 文件，或 <https://www.gnu.org/licenses/gpl-3.0>
+- 本工具打包所依赖的 Electron / Chromium / Node.js 均为 MIT / BSD 类宽松许可证，与 GPL v3.0 无冲突
