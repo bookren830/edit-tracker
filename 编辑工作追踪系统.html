@@ -184,6 +184,28 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 .card-menu button:hover{background:#f7f6fb;}
 .card-menu button.danger{color:var(--red);}
 
+/* 选题看板：表格视图 */
+.topic-table-wrap{
+  background:var(--white);border:1px solid #e7e4f0;border-radius:14px;
+  box-shadow:0 2px 8px rgba(30,20,60,.04);overflow-x:auto;
+}
+.topic-table{width:100%;border-collapse:collapse;font-size:13px;min-width:980px;}
+/* 表头：加粗、比表格正文大一号（13→14）、相对各栏居中 */
+.topic-table th{
+  background:#f7f6fb;text-align:center;padding:10px 12px;font-size:14px;
+  font-weight:bold;color:var(--ink);white-space:nowrap;border-bottom:1px solid #eeeaf6;
+}
+/* 表格内容默认居中对齐（与表头一致）；td.c 类保留兼容 */
+.topic-table td{padding:10px 12px;border-bottom:1px solid #f3f0f9;white-space:nowrap;vertical-align:middle;text-align:center;}
+/* 居中列：序号、详情（编辑）、其他（...）、空值「-」 */
+.topic-table td.c{text-align:center;}
+/* 表格内 hover 浮窗：滚动容器会裁剪 absolute 浮窗，改为 fixed 由 JS 定位，浮于表格之上 */
+.topic-table .tip-box,.topic-table .note-tip{position:fixed;top:auto;left:auto;}
+.topic-table tbody tr:last-child td{border-bottom:none;}
+.topic-table tbody tr:hover{background:#fbfafc;}
+.rel-cell{position:relative;display:inline-flex;}
+.card-menu.in-table{top:34px;right:0;}
+
 /* 预警警示按钮与 hover 提示框 */
 .t-head{align-items:center;}
 .t-head .t-title{flex:0 1 auto;min-width:0;}
@@ -395,18 +417,22 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 }
 /* 状态框与首行文字对齐 */
 .wk-todo .wk-st{margin-top:2px;}
-/* 任务文本：最多两行，超出省略号（flex 下需包子元素才能出省略号） */
-.wk-txt{
+/* 任务文本体：标签与文字同列，换行后的文字与标签左对齐；整体最多两行，超出省略号 */
+.tx-body{
   flex:1;min-width:0;line-height:1.4;word-break:break-all;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
   overflow:hidden;text-overflow:ellipsis;
 }
+.tx-body .wk-txt,.tx-body .cal-txt{display:inline;}
 /* 栏底新建按钮：虚线框，吸在栏底部 */
 .wk-add{
   margin-top:auto;text-align:center;font-size:12px;color:var(--muted);
   padding:4px 0;border-radius:6px;cursor:pointer;border:1px dashed #e0dbf0;
 }
 .wk-add:hover{color:var(--line);border-color:var(--line);background:#f6f2fc;}
+/* 周/月视图 to-do 的选题标签：小尺寸内联标签，完成态淡化 */
+.tx-body .todo-tag{display:inline-block;font-size:10px;padding:1px 4px;border-radius:4px;margin-right:3px;}
+.wk-todo.done .todo-tag,.cal-todo.done .todo-tag{opacity:.45;}
 
 /* 月视图日历：每一栏与每一行间距相同且固定，行高一致 */
 /* 周几表头独立于日历网格（避免被行高撑出空行），下方通长分割横线 */
@@ -430,7 +456,7 @@ input,select,textarea{font-family:inherit;font-size:16px;}
   display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
 }
 .cal-add:hover{background:#ece7f8;color:var(--line);}
-/* 月历任务条：状态框+详情，最多两行，超出省略号 */
+/* 月历任务条：状态框+详情，最多两行，超出省略号；换行文字与标签左对齐（.tx-body） */
 .cal-todo{
   display:flex;align-items:flex-start;gap:4px;
   padding:1px 4px;border-radius:4px;margin-bottom:2px;cursor:pointer;
@@ -441,11 +467,6 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 .cal-todo.overdue .wk-st{border-color:var(--red);}
 .cal-todo.done{color:var(--muted);}
 .cal-todo.done .cal-txt{text-decoration:line-through;}
-.cal-txt{
-  flex:1;min-width:0;line-height:1.4;word-break:break-all;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
-  overflow:hidden;text-overflow:ellipsis;
-}
 /* 「还有 n 项 ›」折叠链接 */
 .cal-more{color:var(--line);padding:1px 4px;font-size:12px;cursor:pointer;}
 .cal-more:hover{text-decoration:underline;}
@@ -575,7 +596,10 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 
     <!-- 页面三：选题执行看板 -->
     <section id="page-kanban" class="page">
-      <div class="page-title">选题执行看板</div>
+      <div class="row" style="justify-content:space-between;align-items:baseline;margin-bottom:14px;">
+        <div class="page-title" style="margin-bottom:0;">选题执行看板</div>
+        <div class="seg" id="kanbanViewSeg"></div>
+      </div>
       <div class="row" style="justify-content:space-between;margin-bottom:14px;">
         <div class="kanban-tabs" id="kanbanTabs" style="margin-bottom:0;"></div>
         <button class="btn primary" onclick="openTopicModal(null)">
@@ -641,6 +665,7 @@ var state = {
   todos: [],
   page: 'todo',
   kanbanFilter: 'all',
+  kanbanView: 'card',
   todoView: 'day',
   todoNav: {day:0, week:0, month:0},
   periodYear: null,
@@ -696,6 +721,11 @@ function daysBetween(a,b){
 }
 function esc(s){
   return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+/* 按字符数截断，超出补省略号（表格固定占位/标签用） */
+function trunc(s, n){
+  s = String(s==null?'':s);
+  return s.length > n ? s.slice(0, n) + '…' : s;
 }
 function toast(msg){
   var el = document.getElementById('toast');
@@ -896,6 +926,21 @@ function renderKanbanTabs(){
     return '<button class="kanban-tab '+(state.kanbanFilter===tb[0]?'active':'')+'" onclick="setKanbanFilter(\''+tb[0]+'\')">'
       + tb[1] + ' ' + counts[tb[0]] + '</button>';
   }).join('');
+  renderKanbanViewSeg();
+}
+/* 标题右侧的视图切换：卡片 / 表格 */
+function renderKanbanViewSeg(){
+  var seg = document.getElementById('kanbanViewSeg');
+  if(!seg) return;
+  var views = [['card','卡片'],['table','表格']];
+  seg.innerHTML = views.map(function(v){
+    return '<button class="'+(state.kanbanView===v[0]?'active':'')+'" onclick="setKanbanView(\''+v[0]+'\')">'+v[1]+'</button>';
+  }).join('');
+}
+function setKanbanView(v){
+  state.kanbanView = v;
+  renderKanbanViewSeg();
+  renderTopicGrid();
 }
 function setKanbanFilter(f){
   state.kanbanFilter = f;
@@ -916,6 +961,12 @@ function renderTopicGrid(){
       ? '当前没有预警选题，一切正常。'
       : '当前分类下暂无选题，点击右上角「新建选题」开始。';
     grid.innerHTML = '<div class="empty-tip" style="grid-column:1/-1;">' + tip + '</div>';
+    return;
+  }
+  /* 表格视图：同一过滤结果，换成 Excel 式表格渲染 */
+  if(state.kanbanView === 'table'){
+    grid.innerHTML = topicTableHtml(list);
+    bindTableTips();
     return;
   }
   grid.innerHTML = list.map(function(t){
@@ -976,6 +1027,77 @@ function renderTopicGrid(){
       + '<button class="btn text" onclick="event.stopPropagation();openTopicModal(\''+t.id+'\')">编辑详情</button>'
       + '</div></div>';
   }).join('');
+}
+/* 表格（Excel）视图：序号从1开始；选题名/院校/最新提醒按字数截断折叠，hover/title 见全貌；
+   当前节点旁带 to-do 提醒铃铛（hover 详情）；其他列「...」下拉复用卡片菜单 */
+function topicTableHtml(list){
+  var heads = ['序号','选题名','选题号','书号','作者','院校','当前节点','最新提醒','详情','其他'];
+  var html = '<div class="topic-table-wrap" style="grid-column:1/-1;"><table class="topic-table"><thead><tr>'
+    + heads.map(function(h){ return '<th>'+h+'</th>'; }).join('')
+    + '</tr></thead><tbody>';
+  list.forEach(function(t, i){
+    var lastReminder = t.reminders.length ? t.reminders[t.reminders.length-1] : null;
+    /* 当前节点未完成 to-do 的提醒铃铛 */
+    var nodePend = currentNodePending(t);
+    var noteHtml = '';
+    if(nodePend.length){
+      noteHtml = '<span class="note-badge">'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M10.3 21a2 2 0 0 0 3.4 0"/></svg>'
+        + '<span class="note-tip">当前节点待完成 to-do：<br>'
+        + nodePend.map(function(d){ return '· '+esc(d.detail)+'（'+esc(d.dueDate.slice(5))+'）'; }).join('<br>')
+        + '</span></span>';
+    }
+    var remindCell = lastReminder
+      ? '<span class="tip-wrap">'+esc(trunc(lastReminder.text,10))+'<span class="tip-box">'+esc(lastReminder.text)+'</span></span>'
+      : '';
+    html += '<tr>'
+      + '<td class="c">'+(i+1)+'</td>'
+      + '<td title="'+esc(t.title)+'">'+esc(trunc(t.title,10))+'</td>'
+      + '<td'+(t.topicNo?'':' class="c"')+'>'+esc(trunc(t.topicNo||'-',9))+'</td>'
+      + '<td'+(t.bookNo?'':' class="c"')+'>'+esc(trunc(t.bookNo||'-',5))+'</td>'
+      + '<td>'+esc(t.author)+'</td>'
+      + '<td title="'+esc(t.school||'')+'">'+esc(trunc(t.school||'',6))+'</td>'
+      + '<td>'+NODES[t.node]+noteHtml+'</td>'
+      + '<td>'+remindCell+'</td>'
+      + '<td class="c"><button class="btn text" onclick="openTopicModal(\''+t.id+'\')">编辑</button></td>'
+      + '<td class="c"><div class="rel-cell">'
+      + '<button class="dots-btn" onclick="toggleCardMenu(event,\''+t.id+'\')" title="更多操作">'
+      + '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>'
+      + '<div class="card-menu in-table" id="cmenu-'+t.id+'">'
+      + '<button onclick="openTopicTodos(\''+t.id+'\')">关联to-do</button>'
+      + '<button onclick="openReminders(\''+t.id+'\')">提醒记录</button>'
+      + '<button class="danger" onclick="deleteTopic(\''+t.id+'\')">删除选题</button>'
+      + '</div></div></td>'
+      + '</tr>';
+  });
+  html += '</tbody></table></div>';
+  return html;
+}
+/* 表格内 hover 浮窗（最新提醒 / 当前节点铃铛）：
+   滚动容器会裁剪 absolute 浮窗（末行尤为明显），改为 fixed 定位浮于表格之上。
+   CSS 的 :hover 负责显隐，这里在 mouseover 时计算视口坐标，下方放不下则翻到上方 */
+function positionTableTip(host){
+  var tip = host.querySelector('.tip-box, .note-tip');
+  if(!tip) return;
+  var r = host.getBoundingClientRect();
+  tip.style.left = '0px'; tip.style.top = '0px'; /* 先归位以量取真实尺寸 */
+  var tw = tip.offsetWidth, th = tip.offsetHeight;
+  var left = Math.min(r.left, window.innerWidth - tw - 8);
+  if(left < 8) left = 8;
+  var top = r.bottom + 6;
+  if(top + th > window.innerHeight - 8) top = r.top - th - 6;
+  if(top < 8) top = 8;
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
+}
+function bindTableTips(){
+  var wrap = document.querySelector('.topic-table-wrap');
+  if(!wrap || wrap._tipBound) return;
+  wrap._tipBound = true;
+  wrap.addEventListener('mouseover', function(e){
+    var host = e.target.closest ? e.target.closest('.tip-wrap, .note-badge') : null;
+    if(host) positionTableTip(host);
+  });
 }
 /* 卡片右上角「...」菜单 */
 function toggleCardMenu(ev, id){
@@ -1367,6 +1489,10 @@ function renderTodoStats(){
     + '<div class="tstat-num" style="color:var(--line)">'+(pct===null?'-':pct+'%')+'</div></div>'
     + ringSvgTodo(pct)+'</div>';
 }
+/* 周/月视图 to-do 的标签：创建 to-do 时填的「选题标签」字段（6字以内），无则不显示 */
+function todoTagHtml(d){
+  return d.tag ? '<span class="todo-tag" title="'+esc(d.tag)+'">'+esc(d.tag)+'</span>' : '';
+}
 function todoRowHtml(d, extraCls){
   var cls = 'todo-item'+(d.done?' done':'')+(extraCls||'');
   var tag = d.tag ? '<span class="todo-tag">'+esc(d.tag)+'</span>' : '';
@@ -1412,11 +1538,11 @@ function renderWeekView(box){
     html += '<div class="wk-col'+(ds===today?' today':'')+'">'
       + '<div class="wk-dhead">'+DOW_LABEL[i]+'<b>'+parseInt(ds.slice(5,7))+'/'+parseInt(ds.slice(8,10))+'</b></div>';
     pend.forEach(function(d){
-      /* 逾期任务只显示在其原截止日期那一格（红色）；状态框：未完成=青框、逾期=红框 */
-      html += '<div class="wk-todo'+(ds<today?' overdue':'')+'" title="'+esc(d.detail)+'" onclick="openTodoModal(\''+d.id+'\')"><span class="wk-st"></span><span class="wk-txt">'+esc(d.detail)+'</span></div>';
+      /* 逾期任务只显示在其原截止日期那一格（红色）；状态框：未完成=青框、逾期=红框；选题标签紧随状态框 */
+      html += '<div class="wk-todo'+(ds<today?' overdue':'')+'" title="'+esc(d.detail)+'" onclick="openTodoModal(\''+d.id+'\')"><span class="wk-st"></span><span class="tx-body">'+todoTagHtml(d)+'<span class="wk-txt">'+esc(d.detail)+'</span></span></div>';
     });
     done.forEach(function(d){
-      html += '<div class="wk-todo done" title="'+esc(d.detail)+'" onclick="openTodoModal(\''+d.id+'\')"><span class="wk-st"></span><span class="wk-txt">'+esc(d.detail)+'</span></div>';
+      html += '<div class="wk-todo done" title="'+esc(d.detail)+'" onclick="openTodoModal(\''+d.id+'\')"><span class="wk-st"></span><span class="tx-body">'+todoTagHtml(d)+'<span class="wk-txt">'+esc(d.detail)+'</span></span></div>';
     });
     /* 栏底新建按钮：以该栏日期预填截止日期 */
     html += '<div class="wk-add" title="在该日期新建to-do" onclick="openTodoModal(null,{dueDate:\''+ds+'\'})">＋ 新建</div>';
@@ -1430,7 +1556,7 @@ var CAL_MAX_TASKS = 2; /* 月视图每格最多显示任务条数（每条最多
 function calTodoHtml(d, today){
   var cls = 'cal-todo' + (d.done ? ' done' : (d.dueDate < today ? ' overdue' : ''));
   return '<div class="'+cls+'" title="'+esc(d.detail)+'" onclick="event.stopPropagation();openTodoModal(\''+d.id+'\')">'
-    + '<span class="wk-st"></span><span class="cal-txt">'+esc(d.detail)+'</span></div>';
+    + '<span class="wk-st"></span><span class="tx-body">'+todoTagHtml(d)+'<span class="cal-txt">'+esc(d.detail)+'</span></span></div>';
 }
 /* 「还有 n 项 ›」点击跳到日视图对应日期 */
 function gotoDay(ds){
